@@ -20,9 +20,12 @@ function ZombieService.getSpawnMarkers()
 	local spawns = map:WaitForChild("ZombieSpawns")
 	local markers = {}
 	for _, zoneFolder in ipairs(spawns:GetChildren()) do
-		-- later filteren we hier op ontgrendelde zones; nu is alleen SpawnPlaza open
-		for _, marker in ipairs(zoneFolder:GetChildren()) do
-			table.insert(markers, marker)
+		-- alleen ontgrendelde zones: SpawnPlaza is altijd open, de rest pas na het kopen van de deur
+		local unlocked = zoneFolder.Name == "SpawnPlaza" or map:GetAttribute("Unlocked_" .. zoneFolder.Name) == true
+		if unlocked then
+			for _, marker in ipairs(zoneFolder:GetChildren()) do
+				table.insert(markers, marker)
+			end
 		end
 	end
 	return markers

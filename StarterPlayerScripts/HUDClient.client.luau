@@ -67,7 +67,7 @@ local roundLabel = hud:WaitForChild("RoundLabel")
 local roundAnnounce = hud:WaitForChild("RoundAnnounce")
 
 local function announceRound(round)
-	roundAnnounce.Text = "RONDE " .. round
+	roundAnnounce.Text = "WAVE " .. round
 	roundAnnounce.TextTransparency = 0
 	roundAnnounce.TextStrokeTransparency = 0.4
 	local tween = TweenService:Create(roundAnnounce, TweenInfo.new(1.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
@@ -82,10 +82,10 @@ end
 local function updateRound()
 	local round = ReplicatedStorage:GetAttribute("Round") or 0
 	if round > 0 then
-		roundLabel.Text = "RONDE " .. round
+		roundLabel.Text = "WAVE " .. round
 		announceRound(round)
 	else
-		roundLabel.Text = "RONDE -"
+		roundLabel.Text = "WAVE -"
 	end
 end
 

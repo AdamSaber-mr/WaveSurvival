@@ -22,9 +22,6 @@ local function countForRound(round)
 end
 
 task.spawn(function()
-	local markers = ZombieService.getSpawnMarkers()
-	print(("[Rondes] %d spawn-plekken gevonden"):format(#markers))
-
 	ReplicatedStorage:SetAttribute("Round", 0)
 	task.wait(roundsConfig.FirstRoundDelay)
 
@@ -32,6 +29,9 @@ task.spawn(function()
 	while true do
 		round += 1
 		ReplicatedStorage:SetAttribute("Round", round)
+
+		-- elke ronde opnieuw ophalen: net-ontgrendelde zones doen dan meteen mee
+		local markers = ZombieService.getSpawnMarkers()
 
 		local count = countForRound(round)
 		local stats = statsForRound(round)
