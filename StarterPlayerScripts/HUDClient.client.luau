@@ -91,3 +91,54 @@ end
 
 updateRound()
 ReplicatedStorage:GetAttributeChangedSignal("Round"):Connect(updateRound)
+
+-- ===== AMMO: teller boven het geld (MAG / RESERVE, of RELOADING...) =====
+local ammoLabel = hud:WaitForChild("AmmoLabel")
+local currentTool = nil
+local toolConnections = {}
+
+local function formatReserve(reserve)
+	return (reserve ~= nil and reserve < 0) and "∞" or tostring(reserve or 0)
+end
+
+local function updateAmmo()
+	if not currentTool or currentTool:GetAttribute("Mag") == nil then
+		ammoLabel.Text = ""
+		return
+	end
+	if currentTool:GetAttribute("Reloading") then
+		ammoLabel.Text = "RELOADING..."
+	else
+		ammoLabel.Text = string.upper(currentTool.Name) .. "  " .. tostring(currentTool:GetAttribute("Mag")) .. " / " .. formatReserve(currentTool:GetAttribute("Reserve"))
+	end
+end
+
+local function setCurrentTool(tool)
+	for _, connection in ipairs(toolConnections) do
+		connection:Disconnect()
+	end
+	toolConnections = {}
+	currentTool = tool
+	if tool then
+		for _, attributeName in ipairs({ "Mag", "Reserve", "Reloading" }) do
+			table.insert(toolConnections, tool:GetAttributeChangedSignal(attributeName):Connect(updateAmmo))
+		end
+	end
+	updateAmmo()
+end
+
+local function watchCharacter(character)
+	character.ChildAdded:Connect(function(child)
+		if child:IsA("Tool") then setCurrentTool(child) end
+	end)
+	character.ChildRemoved:Connect(function(child)
+		if child == currentTool then setCurrentTool(nil) end
+	end)
+	local equipped = character:FindFirstChildOfClass("Tool")
+	if equipped then setCurrentTool(equipped) end
+end
+
+if player.Character then
+	watchCharacter(player.Character)
+end
+player.CharacterAdded:Connect(watchCharacter)

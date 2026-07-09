@@ -177,6 +177,14 @@ roundLabel.TextXAlignment = Enum.TextXAlignment.Left
 roundLabel.TextColor3 = Color3.fromRGB(225, 85, 85); roundLabel.TextStrokeColor3 = Color3.fromRGB(20, 20, 25); roundLabel.TextStrokeTransparency = 0.4
 roundLabel.Text = "WAVE -"; roundLabel.Parent = hud
 
+local ammoL = Instance.new("TextLabel")
+ammoL.Name = "AmmoLabel"
+ammoL.AnchorPoint = Vector2.new(1, 1); ammoL.Position = UDim2.new(1, -24, 1, -72); ammoL.Size = UDim2.new(0, 300, 0, 38)
+ammoL.BackgroundTransparency = 1; ammoL.Font = Enum.Font.Arcade; ammoL.TextScaled = true
+ammoL.TextXAlignment = Enum.TextXAlignment.Right
+ammoL.TextColor3 = Color3.fromRGB(230, 230, 240); ammoL.TextStrokeColor3 = Color3.fromRGB(20, 20, 25); ammoL.TextStrokeTransparency = 0.4
+ammoL.Text = ""; ammoL.Parent = hud
+
 local announce = Instance.new("TextLabel")
 announce.Name = "RoundAnnounce"
 announce.AnchorPoint = Vector2.new(0.5, 0.5); announce.Position = UDim2.new(0.5, 0, 0.3, 0); announce.Size = UDim2.new(0, 500, 0, 80)
@@ -202,4 +210,89 @@ local w2 = Instance.new("WeldConstraint"); w2.Part0 = handle; w2.Part1 = glow2; 
 tool.GripPos = Vector3.new(0, -0.25, 0.1)
 tool.Parent = sp
 
-print("[Rebuild] Wereld herbouwd: Map, spawn-markers, HUD, Pistol")
+-- ===== DEEL 4: WAPEN-TEMPLATES (ServerStorage) + WALL-BUYS (fase 7) =====
+local ss = game:GetService("ServerStorage")
+local oldW = ss:FindFirstChild("Weapons")
+if oldW then oldW:Destroy() end
+local weaponsF = Instance.new("Folder"); weaponsF.Name = "Weapons"; weaponsF.Parent = ss
+
+local function gunPart(props, parent)
+	local p = Instance.new("Part")
+	p.CanCollide = false
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Material = Enum.Material.Metal
+	for k, v in pairs(props) do p[k] = v end
+	p.Parent = parent
+	return p
+end
+local function weld(a, b)
+	local w = Instance.new("WeldConstraint"); w.Part0 = a; w.Part1 = b; w.Parent = a
+end
+
+local smg = Instance.new("Tool")
+smg.Name = "SMG"; smg.ToolTip = "SMG — hold to fire"; smg.CanBeDropped = false
+local sh = gunPart({Name="Handle", Size=Vector3.new(0.45, 1.0, 0.5), Color=Color3.fromRGB(40, 40, 50)}, smg)
+local sb = gunPart({Name="Body", Size=Vector3.new(0.42, 0.5, 2.2), Color=Color3.fromRGB(60, 60, 75)}, smg)
+sb.CFrame = sh.CFrame * CFrame.new(0, 0.6, -0.6)
+local sm = gunPart({Name="Mag", Size=Vector3.new(0.35, 0.9, 0.4), Color=Color3.fromRGB(50, 50, 60)}, smg)
+sm.CFrame = sh.CFrame * CFrame.new(0, 0.1, -0.9)
+local sgl = gunPart({Name="Glow", Size=Vector3.new(0.44, 0.1, 1.0), Color=Color3.fromRGB(90, 160, 255), Material=Enum.Material.Neon}, smg)
+sgl.CFrame = sb.CFrame * CFrame.new(0, -0.25, 0)
+weld(sh, sb); weld(sh, sm); weld(sh, sgl)
+smg.GripPos = Vector3.new(0, -0.2, 0.1)
+smg.Parent = weaponsF
+
+local sgun = Instance.new("Tool")
+sgun.Name = "Shotgun"; sgun.ToolTip = "Shotgun — devastating up close"; sgun.CanBeDropped = false
+local gh = gunPart({Name="Handle", Size=Vector3.new(0.5, 1.1, 0.55), Color=Color3.fromRGB(55, 40, 30), Material=Enum.Material.Wood}, sgun)
+local gb = gunPart({Name="Barrel", Size=Vector3.new(0.7, 0.45, 2.6), Color=Color3.fromRGB(70, 70, 80)}, sgun)
+gb.CFrame = gh.CFrame * CFrame.new(0, 0.65, -0.8)
+local gg = gunPart({Name="Glow", Size=Vector3.new(0.72, 0.1, 1.2), Color=Color3.fromRGB(255, 150, 0), Material=Enum.Material.Neon}, sgun)
+gg.CFrame = gb.CFrame * CFrame.new(0, -0.28, 0)
+weld(gh, gb); weld(gh, gg)
+sgun.GripPos = Vector3.new(0, -0.25, 0.15)
+sgun.Parent = weaponsF
+
+local oldWB = map:FindFirstChild("WallBuys")
+if oldWB then oldWB:Destroy() end
+local wallBuys = Instance.new("Folder"); wallBuys.Name = "WallBuys"; wallBuys.Parent = map
+
+local function wallBuy(weaponName, price, wallX, z, accentColor)
+	local sgn = wallX > 0 and -1 or 1
+	local station = Instance.new("Model"); station.Name = "WallBuy_" .. weaponName; station.Parent = wallBuys
+	station:SetAttribute("Weapon", weaponName)
+	station:SetAttribute("Price", price)
+	local board = Instance.new("Part")
+	board.Name = "Board"
+	board.Anchored = true; board.CanCollide = false
+	board.Size = Vector3.new(0.4, 4, 8)
+	board.Position = Vector3.new(wallX + sgn * 0.4, 8, z)
+	board.Color = Color3.fromRGB(25, 25, 35)
+	board.Material = Enum.Material.SmoothPlastic
+	board.Parent = station
+	local sgui = Instance.new("SurfaceGui")
+	sgui.Face = (wallX > 0) and Enum.NormalId.Left or Enum.NormalId.Right
+	sgui.Parent = board
+	local tl = Instance.new("TextLabel")
+	tl.Size = UDim2.new(1, 0, 1, 0)
+	tl.BackgroundTransparency = 1
+	tl.Text = weaponName .. "\n$" .. price
+	tl.TextColor3 = accentColor
+	tl.TextScaled = true
+	tl.Font = Enum.Font.Arcade
+	tl.Parent = sgui
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "BuyPrompt"
+	prompt.ObjectText = weaponName
+	prompt.ActionText = "Buy  ($" .. price .. ")"
+	prompt.HoldDuration = 0.6
+	prompt.MaxActivationDistance = 10
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = board
+end
+
+wallBuy("SMG", 1000, 45, 25, Color3.fromRGB(90, 160, 255))
+wallBuy("Shotgun", 1500, -45, 25, Color3.fromRGB(255, 150, 0))
+
+print("[Rebuild] Wereld herbouwd: Map, spawn-markers, HUD, Pistol, Weapons, WallBuys")

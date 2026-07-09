@@ -14,9 +14,36 @@ Config.Zombie = {
 
 Config.Weapons = {
 	Pistol = {
-		Damage = 30,        -- zombie heeft 60 health → precies 2 schoten per kill (CoD-stijl)
+		Damage = 12,         -- zombie heeft 60 health → 5 schoten per kill (startwapen hoort zwak)
 		FireCooldown = 0.35, -- seconden tussen twee schoten (ook al klik je sneller)
 		Range = 200,         -- studs: verder dan dit vliegt de kogel niet
+		MagSize = 12,        -- kogels in het magazijn
+		ReserveMax = -1,     -- reserve-ammo (-1 = oneindig: startwapen raakt nooit écht leeg)
+		ReloadTime = 1.2,    -- seconden herladen (heel magazijn tegelijk)
+	},
+	SMG = {
+		Damage = 20,
+		FireCooldown = 0.12,
+		Range = 200,
+		Auto = true,         -- muisknop vasthouden = blijven vuren
+		Price = 1000,        -- wall-buy prijs
+		AmmoPrice = 500,     -- ammo bijkopen bij het bord (CoD: halve wapenprijs)
+		MagSize = 30,
+		ReserveMax = 120,
+		ReloadTime = 1.8,
+	},
+	Shotgun = {
+		Damage = 16,         -- per kogeltje...
+		Pellets = 6,         -- ...maar 6 kogeltjes per schot (96 totaal van dichtbij!)
+		Spread = 3,          -- graden waaier: verder weg = meer missers
+		FireCooldown = 0.9,
+		Range = 100,
+		Price = 1500,
+		AmmoPrice = 750,
+		MagSize = 8,
+		ReserveMax = 32,
+		ShellReload = true,      -- CoD-stijl: schelp voor schelp herladen...
+		ShellReloadTime = 0.6,   -- ...elke 0,6s één erbij (en je mag tussendoor vuren!)
 	},
 }
 

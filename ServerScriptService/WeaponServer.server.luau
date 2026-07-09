@@ -1,6 +1,8 @@
--- WeaponServer: de scheidsrechter van het schieten.
--- De client (tv) vraagt "ik wil schieten richting X" — de server controleert alles,
--- schiet de échte straal (raycast) en deelt de schade uit. Zo kan niemand valsspelen.
+-- WeaponServer: de scheidsrechter van het schieten én de munitie-administratie.
+-- De client (tv) vraagt "schiet!" of "herlaad!" — de server beslist alles:
+-- heb je kogels? ben je aan het herladen? klopt de vuursnelheid?
+-- Ammo staat als stickers (Attributes) op het wapen zelf: Mag, Reserve, Reloading.
+-- Die stickers kopieert Roblox automatisch naar de client — de HUD kijkt er zo naar.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -19,10 +21,49 @@ end
 local fireEvent = Instance.new("RemoteEvent")
 fireEvent.Name = "FireWeapon"
 fireEvent.Parent = remotes
+local reloadEvent = Instance.new("RemoteEvent")
+reloadEvent.Name = "ReloadWeapon"
+reloadEvent.Parent = remotes
 
 local lastShotAt = {} -- [player] = tijdstip laatste schot (voor vuursnelheid-limiet)
+local rng = Random.new()
 
--- kort lichtstreepje van loop naar inslag, zodat je ziet waar je schiet
+-- ===== MUNITIE-ADMINISTRATIE =====
+
+-- geef een wapen zijn start-ammo-stickers (één keer, zodra het bestaat)
+local function initAmmo(tool)
+	local weaponConfig = Config.Weapons[tool.Name]
+	if not weaponConfig or not weaponConfig.MagSize then return end
+	if tool:GetAttribute("Mag") ~= nil then return end
+	tool:SetAttribute("Mag", weaponConfig.MagSize)
+	tool:SetAttribute("Reserve", weaponConfig.ReserveMax)
+	tool:SetAttribute("Reloading", false)
+end
+
+-- houd rugzak + handen van elke speler in de gaten voor nieuwe wapens
+local function watchContainer(container)
+	container.ChildAdded:Connect(function(child)
+		if child:IsA("Tool") then initAmmo(child) end
+	end)
+	for _, child in ipairs(container:GetChildren()) do
+		if child:IsA("Tool") then initAmmo(child) end
+	end
+end
+
+local function watchPlayer(player)
+	local backpack = player:FindFirstChild("Backpack")
+	if backpack then watchContainer(backpack) end
+	if player.Character then watchContainer(player.Character) end
+	player.CharacterAdded:Connect(function(character)
+		watchContainer(character)
+		watchContainer(player:WaitForChild("Backpack"))
+	end)
+end
+Players.PlayerAdded:Connect(watchPlayer)
+for _, player in ipairs(Players:GetPlayers()) do watchPlayer(player) end
+
+-- ===== SCHIETEN =====
+
 local function drawTracer(fromPosition, toPosition)
 	local distance = (toPosition - fromPosition).Magnitude
 	local beam = Instance.new("Part")
@@ -38,57 +79,172 @@ local function drawTracer(fromPosition, toPosition)
 	Debris:AddItem(beam, 0.08)
 end
 
-fireEvent.OnServerEvent:Connect(function(player, targetPosition)
-	-- controle 1: is de aanvraag wel een echte positie?
-	if typeof(targetPosition) ~= "Vector3" then return end
+local function damageZombie(player, zombieHumanoid, weaponConfig)
+	local wasAlive = zombieHumanoid.Health > 0
+	zombieHumanoid:TakeDamage(weaponConfig.Damage)
+	if wasAlive then
+		EconomyService.add(player, Config.Economy.HitReward)
+		if zombieHumanoid.Health <= 0 then
+			EconomyService.add(player, Config.Economy.KillReward)
+		end
+	end
+end
 
-	local weaponConfig = Config.Weapons.Pistol
+-- noodgreep van dichtbij: een straal die BINNENIN een zombie begint kan hem niet
+-- raken (Roblox-regel) — dus als de straal niks raakt, checken we of er een zombie
+-- praktisch tegen de loop aan staat in de schietrichting
+local function pointBlankZombie(origin, aimDirection)
+	local zombiesFolder = workspace:FindFirstChild("Zombies")
+	if not zombiesFolder then return nil end
+	local best, bestDistance = nil, 7  -- max 7 studs "tegen de loop" (de loop zit naast je lijf)
+	for _, model in ipairs(zombiesFolder:GetChildren()) do
+		local humanoid = model:FindFirstChildOfClass("Humanoid")
+		local rootPart = model.PrimaryPart
+		if humanoid and rootPart and humanoid.Health > 0 then
+			local offset = rootPart.Position - origin
+			local distance = offset.Magnitude
+			if distance < bestDistance and offset.Unit:Dot(aimDirection.Unit) > 0.3 then
+				best, bestDistance = humanoid, distance
+			end
+		end
+	end
+	return best
+end
 
-	-- controle 2: leeft de speler en heeft hij het wapen vast?
-	local character = player.Character
-	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	local rootPart = character and character:FindFirstChild("HumanoidRootPart")
-	if not (humanoid and rootPart and humanoid.Health > 0) then return end
-	local tool = character:FindFirstChild("Pistol")
-	if not tool then return end
-
-	-- controle 3: niet sneller schieten dan de vuursnelheid toestaat
-	local now = os.clock()
-	if lastShotAt[player] and now - lastShotAt[player] < weaponConfig.FireCooldown then return end
-	lastShotAt[player] = now
-
-	-- de echte straal: vanaf de loop richting het doelpunt
-	local handle = tool:FindFirstChild("Handle")
-	local origin = handle and handle.Position or rootPart.Position
-	local direction = targetPosition - origin
-	if direction.Magnitude < 0.001 then return end
-	direction = direction.Unit * weaponConfig.Range
-
+-- één straal: tracer + schade + geld bij een zombie-raak
+-- (de straal vertrekt vanaf ooghoogte — stabiel; de tracer tekent vanaf de loop — mooi)
+local function fireRay(player, character, origin, tracerOrigin, direction, weaponConfig)
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
 	params.FilterDescendantsInstances = { character }
 	local result = workspace:Raycast(origin, direction, params)
 
 	local hitPosition = result and result.Position or (origin + direction)
-	drawTracer(origin, hitPosition)
+	drawTracer(tracerOrigin, hitPosition)
 
-	-- raak? alleen zombies (modellen in de Zombies-map) krijgen schade
+	local zombieHumanoid = nil
 	if result and result.Instance then
 		local model = result.Instance:FindFirstAncestorOfClass("Model")
-		local zombieHumanoid = model and model:FindFirstChildOfClass("Humanoid")
+		local foundHumanoid = model and model:FindFirstChildOfClass("Humanoid")
 		local zombiesFolder = workspace:FindFirstChild("Zombies")
-		if zombieHumanoid and zombiesFolder and model.Parent == zombiesFolder then
-			local wasAlive = zombieHumanoid.Health > 0
-			zombieHumanoid:TakeDamage(weaponConfig.Damage)
-			if wasAlive then
-				EconomyService.add(player, Config.Economy.HitReward)
-				if zombieHumanoid.Health <= 0 then
-					-- het dodelijke schot: kill-bonus erbovenop
-					EconomyService.add(player, Config.Economy.KillReward)
-				end
+		if foundHumanoid and zombiesFolder and model.Parent == zombiesFolder then
+			zombieHumanoid = foundHumanoid
+		end
+	end
+
+	-- niks geraakt? misschien staat de zombie tegen je loop aan
+	if not zombieHumanoid then
+		zombieHumanoid = pointBlankZombie(origin, direction)
+	end
+
+	if zombieHumanoid then
+		damageZombie(player, zombieHumanoid, weaponConfig)
+	end
+end
+
+fireEvent.OnServerEvent:Connect(function(player, targetPosition)
+	if typeof(targetPosition) ~= "Vector3" then return end
+
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+	if not (humanoid and rootPart and humanoid.Health > 0) then return end
+	local tool = character:FindFirstChildOfClass("Tool")
+	local weaponConfig = tool and Config.Weapons[tool.Name]
+	if not weaponConfig then return end
+
+	initAmmo(tool)
+
+	-- magazijn leeg? geen schot (client vraagt dan zelf om een reload)
+	local mag = tool:GetAttribute("Mag") or 0
+	if mag <= 0 then return end
+
+	-- aan het herladen? shotgun mag onderbreken (pump-actie!), de rest moet wachten
+	if tool:GetAttribute("Reloading") then
+		if weaponConfig.ShellReload then
+			tool:SetAttribute("Reloading", false)
+		else
+			return
+		end
+	end
+
+	local now = os.clock()
+	if lastShotAt[player] and now - lastShotAt[player] < weaponConfig.FireCooldown then return end
+	lastShotAt[player] = now
+
+	-- AIM-FIX: de straal vertrekt vanaf ooghoogte (stabiel punt) en niet vanuit de
+	-- loop — die zwaait mee met je rennende arm en stuurde kogels de verkeerde kant op.
+	local origin = rootPart.Position + Vector3.new(0, 1.5, 0)
+	local handle = tool:FindFirstChild("Handle")
+	local tracerOrigin = handle and handle.Position or origin
+	if (targetPosition - origin).Magnitude < 0.001 then return end
+
+	-- kogel eraf
+	tool:SetAttribute("Mag", mag - 1)
+
+	-- shotgun: waaier van kogeltjes; andere wapens: één straal
+	local pellets = weaponConfig.Pellets or 1
+	local spread = weaponConfig.Spread or 0
+	local aimFrame = CFrame.lookAt(origin, targetPosition)
+	for _ = 1, pellets do
+		local yaw = math.rad(rng:NextNumber(-spread, spread))
+		local pitch = math.rad(rng:NextNumber(-spread, spread))
+		local direction = (aimFrame * CFrame.Angles(pitch, yaw, 0)).LookVector * weaponConfig.Range
+		fireRay(player, character, origin, tracerOrigin, direction, weaponConfig)
+	end
+end)
+
+-- ===== HERLADEN =====
+
+reloadEvent.OnServerEvent:Connect(function(player)
+	local character = player.Character
+	local tool = character and character:FindFirstChildOfClass("Tool")
+	local weaponConfig = tool and Config.Weapons[tool.Name]
+	if not weaponConfig or not weaponConfig.MagSize then return end
+
+	initAmmo(tool)
+	if tool:GetAttribute("Reloading") then return end
+
+	local mag = tool:GetAttribute("Mag") or 0
+	local reserve = tool:GetAttribute("Reserve") or 0
+	if mag >= weaponConfig.MagSize then return end  -- al vol
+	if reserve == 0 then return end                  -- niks om mee te laden (-1 = oneindig, mag door)
+
+	tool:SetAttribute("Reloading", true)
+
+	if weaponConfig.ShellReload then
+		-- shotgun: schelp voor schelp; een schot of wapenwissel onderbreekt netjes
+		while tool.Parent == character
+			and tool:GetAttribute("Reloading")
+			and (tool:GetAttribute("Mag") or 0) < weaponConfig.MagSize
+			and (tool:GetAttribute("Reserve") or 0) ~= 0
+		do
+			task.wait(weaponConfig.ShellReloadTime)
+			if not tool:GetAttribute("Reloading") or tool.Parent ~= character then break end
+			local currentMag = tool:GetAttribute("Mag") or 0
+			local currentReserve = tool:GetAttribute("Reserve") or 0
+			if currentMag >= weaponConfig.MagSize then break end
+			tool:SetAttribute("Mag", currentMag + 1)
+			if currentReserve > 0 then
+				tool:SetAttribute("Reserve", currentReserve - 1)
+			end
+		end
+	else
+		-- pistol/SMG: heel magazijn in één keer
+		task.wait(weaponConfig.ReloadTime)
+		if tool.Parent == character and tool:GetAttribute("Reloading") then
+			local currentMag = tool:GetAttribute("Mag") or 0
+			local currentReserve = tool:GetAttribute("Reserve") or 0
+			local needed = weaponConfig.MagSize - currentMag
+			local taken = (currentReserve < 0) and needed or math.min(needed, currentReserve)
+			tool:SetAttribute("Mag", currentMag + taken)
+			if currentReserve > 0 then
+				tool:SetAttribute("Reserve", currentReserve - taken)
 			end
 		end
 	end
+
+	tool:SetAttribute("Reloading", false)
 end)
 
 Players.PlayerRemoving:Connect(function(player)
