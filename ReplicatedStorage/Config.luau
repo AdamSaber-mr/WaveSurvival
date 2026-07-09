@@ -12,6 +12,14 @@ Config.Zombie = {
 	DespawnDelay = 2,      -- seconden dat een dode zombie blijft liggen
 }
 
+Config.Weapons = {
+	Pistol = {
+		Damage = 30,        -- zombie heeft 60 health → precies 2 schoten per kill (CoD-stijl)
+		FireCooldown = 0.35, -- seconden tussen twee schoten (ook al klik je sneller)
+		Range = 200,         -- studs: verder dan dit vliegt de kogel niet
+	},
+}
+
 Config.Spawning = {
 	TestCount = 5,         -- aantal zombies per testgolf (echte rondes komen in fase 5)
 	SpawnInterval = 0.8,   -- seconden tussen twee spawns binnen een golf
