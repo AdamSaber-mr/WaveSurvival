@@ -26,10 +26,18 @@ Config.Economy = {
 	KillReward = 100,   -- extra geld voor het dodelijke schot
 }
 
-Config.Spawning = {
-	TestCount = 5,         -- aantal zombies per testgolf (echte rondes komen in fase 5)
-	SpawnInterval = 0.8,   -- seconden tussen twee spawns binnen een golf
-	WaveRestDelay = 5,     -- seconden rust nadat een hele golf is uitgeschakeld
+Config.Rounds = {
+	-- aantal zombies: BaseCount + (ronde - 1) * CountPerRound  → ronde 1: 5, ronde 2: 7, ronde 3: 9...
+	BaseCount = 5,
+	CountPerRound = 2,
+	-- zombie-health: Zombie.Health + (ronde - 1) * HealthPerRound → ronde 1: 60 (2 schoten), ronde 3: 90 (3 schoten)...
+	HealthPerRound = 15,
+	-- zombie-snelheid: Zombie.WalkSpeed + (ronde - 1) * SpeedPerRound, nooit sneller dan MaxSpeed (speler = 16)
+	SpeedPerRound = 0.4,
+	MaxSpeed = 14,
+	SpawnInterval = 1.2,      -- seconden tussen twee spawns binnen een ronde (CoD-stijl druppelen)
+	RestBetweenRounds = 8,    -- adempauze tussen twee rondes
+	FirstRoundDelay = 5,      -- seconden na start voordat ronde 1 begint
 }
 
 return Config

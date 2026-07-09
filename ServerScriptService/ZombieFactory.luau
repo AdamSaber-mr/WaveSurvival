@@ -30,7 +30,10 @@ local function weldTo(root, part)
 	weld.Parent = root
 end
 
-function ZombieFactory.create()
+-- overrides (optioneel): { Health = ..., WalkSpeed = ... } — zo maakt de RoundManager
+-- zombies per ronde sterker zonder dat de fabriek de formules hoeft te kennen
+function ZombieFactory.create(overrides)
+	overrides = overrides or {}
 	local model = Instance.new("Model")
 	model.Name = "Zombie"
 
@@ -73,9 +76,9 @@ function ZombieFactory.create()
 	end
 
 	local humanoid = Instance.new("Humanoid")
-	humanoid.MaxHealth = Config.Zombie.Health
-	humanoid.Health = Config.Zombie.Health
-	humanoid.WalkSpeed = Config.Zombie.WalkSpeed
+	humanoid.MaxHealth = overrides.Health or Config.Zombie.Health
+	humanoid.Health = humanoid.MaxHealth
+	humanoid.WalkSpeed = overrides.WalkSpeed or Config.Zombie.WalkSpeed
 	humanoid.HipHeight = 2          -- houdt het karretje op de juiste hoogte boven de grond
 	humanoid.RequiresNeck = false   -- ons simpele lijf heeft geen officiële nek-verbinding
 	humanoid.Parent = model

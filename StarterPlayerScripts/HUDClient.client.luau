@@ -60,3 +60,34 @@ player:GetAttributeChangedSignal("Money"):Connect(function()
 		showPopup(delta)
 	end
 end)
+
+-- ===== RONDES: nummer linksonder + grote aankondiging bij rondestart =====
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local roundLabel = hud:WaitForChild("RoundLabel")
+local roundAnnounce = hud:WaitForChild("RoundAnnounce")
+
+local function announceRound(round)
+	roundAnnounce.Text = "RONDE " .. round
+	roundAnnounce.TextTransparency = 0
+	roundAnnounce.TextStrokeTransparency = 0.4
+	local tween = TweenService:Create(roundAnnounce, TweenInfo.new(1.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+		TextTransparency = 1,
+		TextStrokeTransparency = 1,
+	})
+	task.delay(1.5, function()
+		tween:Play()
+	end)
+end
+
+local function updateRound()
+	local round = ReplicatedStorage:GetAttribute("Round") or 0
+	if round > 0 then
+		roundLabel.Text = "RONDE " .. round
+		announceRound(round)
+	else
+		roundLabel.Text = "RONDE -"
+	end
+end
+
+updateRound()
+ReplicatedStorage:GetAttributeChangedSignal("Round"):Connect(updateRound)

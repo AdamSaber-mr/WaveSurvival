@@ -1,6 +1,6 @@
--- ZombieAI: spawnt zombies op de markers en bestuurt ze.
--- Gedrag: zoek de dichtstbijzijnde levende speler → loop ernaartoe → mep (met cooldown).
--- Testmodus: elke golf heeft Config.Spawning.TestCount zombies; echte rondes komen in fase 5.
+-- ZombieService: het zombie-brein als herbruikbare module.
+-- De RoundManager (wedstrijdleider) bestelt hier zombies; deze module regelt
+-- het spawnen, achtervolgen en aanvallen. Was eerst ZombieAI.server.luau.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -8,12 +8,14 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
 local ZombieFactory = require(script.Parent:WaitForChild("ZombieFactory"))
 
+local ZombieService = {}
+
 -- nette opbergmap in de wereld voor alle actieve zombies
 local zombiesFolder = Instance.new("Folder")
 zombiesFolder.Name = "Zombies"
 zombiesFolder.Parent = workspace
 
-local function getSpawnMarkers()
+function ZombieService.getSpawnMarkers()
 	local map = workspace:WaitForChild("Map")
 	local spawns = map:WaitForChild("ZombieSpawns")
 	local markers = {}
@@ -88,14 +90,16 @@ local function runZombie(model)
 	end
 end
 
-local function spawnZombie(marker)
-	local zombie = ZombieFactory.create()
+-- spawn één zombie op een marker, optioneel met ronde-stats (Health/WalkSpeed)
+function ZombieService.spawn(marker, statOverrides)
+	local zombie = ZombieFactory.create(statOverrides)
 	zombie.Parent = zombiesFolder
 	zombie:PivotTo(CFrame.new(marker.Position + Vector3.new(0, 2, 0)))
 	task.spawn(runZombie, zombie)
+	return zombie
 end
 
-local function aliveZombieCount()
+function ZombieService.aliveCount()
 	local count = 0
 	for _, zombie in ipairs(zombiesFolder:GetChildren()) do
 		local humanoid = zombie:FindFirstChildOfClass("Humanoid")
@@ -106,25 +110,4 @@ local function aliveZombieCount()
 	return count
 end
 
--- test-golven: spawn een golf, wacht tot iedereen is uitgeschakeld, korte rust, opnieuw
-task.spawn(function()
-	local markers = getSpawnMarkers()
-	print(("[Zombies] %d spawn-plekken gevonden"):format(#markers))
-	task.wait(3) -- even ademruimte na het starten
-
-	while true do
-		print(("[Zombies] Nieuwe testgolf: %d zombies"):format(Config.Spawning.TestCount))
-		for i = 1, Config.Spawning.TestCount do
-			local marker = markers[(i - 1) % #markers + 1]
-			spawnZombie(marker)
-			task.wait(Config.Spawning.SpawnInterval)
-		end
-
-		repeat
-			task.wait(1)
-		until aliveZombieCount() == 0
-
-		print(("[Zombies] Golf uitgeschakeld — volgende golf over %d seconden"):format(Config.Spawning.WaveRestDelay))
-		task.wait(Config.Spawning.WaveRestDelay)
-	end
-end)
+return ZombieService
