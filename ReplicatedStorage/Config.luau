@@ -20,6 +20,12 @@ Config.Weapons = {
 	},
 }
 
+Config.Economy = {
+	StartMoney = 500,   -- startbedrag, net als in CoD Zombies
+	HitReward = 10,     -- geld per raak schot
+	KillReward = 100,   -- extra geld voor het dodelijke schot
+}
+
 Config.Spawning = {
 	TestCount = 5,         -- aantal zombies per testgolf (echte rondes komen in fase 5)
 	SpawnInterval = 0.8,   -- seconden tussen twee spawns binnen een golf

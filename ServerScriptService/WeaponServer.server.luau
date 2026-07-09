@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Debris = game:GetService("Debris")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
+local EconomyService = require(script.Parent:WaitForChild("EconomyService"))
 
 -- walkietalkie-map: in code aangemaakt zodat alles in git zichtbaar is
 local remotes = ReplicatedStorage:FindFirstChild("Remotes")
@@ -77,7 +78,15 @@ fireEvent.OnServerEvent:Connect(function(player, targetPosition)
 		local zombieHumanoid = model and model:FindFirstChildOfClass("Humanoid")
 		local zombiesFolder = workspace:FindFirstChild("Zombies")
 		if zombieHumanoid and zombiesFolder and model.Parent == zombiesFolder then
+			local wasAlive = zombieHumanoid.Health > 0
 			zombieHumanoid:TakeDamage(weaponConfig.Damage)
+			if wasAlive then
+				EconomyService.add(player, Config.Economy.HitReward)
+				if zombieHumanoid.Health <= 0 then
+					-- het dodelijke schot: kill-bonus erbovenop
+					EconomyService.add(player, Config.Economy.KillReward)
+				end
+			end
 		end
 	end
 end)

@@ -20,8 +20,8 @@ Een zombie wave survival game in Roblox, geïnspireerd op CoD Black Ops Zombies,
 | 1 | Spawn-plein (Spaceland): plein, winkels, planters, gesplitste koopmuur + koopcirkel | ✅ Klaar |
 | 2 | Zombies: spawnen op markers, achtervolgen, melee-aanval | ✅ Klaar |
 | 3 | Startpistool: schieten (raycast), zombies doden | ✅ Klaar |
-| 4 | Geld: +punten per hit/kill + geld-HUD | ⏭️ Volgende |
-| 5 | Rondes: golven die zwaarder worden + ronde-HUD | ⬜ |
+| 4 | Geld: +punten per hit/kill + geld-HUD | ✅ Klaar |
+| 5 | Rondes: golven die zwaarder worden + ronde-HUD | ⏭️ Volgende |
 | 6 | Deuren kopen: Main Street-muur opent (beide delen) via geld | ⬜ |
 | 7 | Wall-buys: wapens & ammo aan de muur | ⬜ |
 | 8 | Mystery Box | ⬜ |
