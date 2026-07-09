@@ -1,0 +1,40 @@
+# Spaceland Zombies — Faseplan & Voortgang
+
+Een zombie wave survival game in Roblox, geïnspireerd op CoD Black Ops Zombies, met als map-thema **Spaceland** (het retro ruimte-pretpark uit Infinite Warfare Zombies). Gebouwd samen met Claude: plan eerst, dan fase voor fase bouwen en testen.
+
+## Vaste afspraken
+
+- **Multiplayer-proof vanaf dag 1**, solo getest
+- **Functionaliteit eerst, visueel later** — placeholder-blokken tot de polish-fase
+- **Gedempt kleurenpalet**: donkergrijs/blauwgrijs, spaarzaam paars/blauw neon
+- Alle balansgetallen komen in `ReplicatedStorage/Config.luau`
+- Geld & schade beslist altijd de server
+- Per fase: bouwen → Claude checkt via MCP → Adam playtest → feedback → pas committen als Adam "fase klaar" zegt
+
+## Fases
+
+| # | Fase | Status |
+|---|------|--------|
+| 00 | GitHub-repo opzetten | ✅ Klaar |
+| 0 | Script Sync fixen + place-bestand verhuizen | ✅ Klaar |
+| 1 | Spawn-plein (Spaceland): plein, winkels, planters, gesplitste koopmuur + koopcirkel | ✅ Klaar |
+| 2 | Zombies: spawnen op markers, achtervolgen, melee-aanval | ⏭️ Volgende |
+| 3 | Startpistool: schieten (raycast), zombies doden | ⬜ |
+| 4 | Geld: +punten per hit/kill + geld-HUD | ⬜ |
+| 5 | Rondes: golven die zwaarder worden + ronde-HUD | ⬜ |
+| 6 | Deuren kopen: Main Street-muur opent (beide delen) via geld | ⬜ |
+| 7 | Wall-buys: wapens & ammo aan de muur | ⬜ |
+| 8 | Mystery Box | ⬜ |
+| 9 | Perks (health, herlaad, snelheid) | ⬜ |
+| 10 | Dood, laatste overlevende, herstart | ⬜ |
+| 11 | Polish: modellen, geluid, lighting, sfeer | ⬜ |
+
+## De map tot nu toe (Fase 1)
+
+- Vierkant spawn-plein 90×110, spawn achteraan onder de ★ SPACELAND ★-poortboog
+- 6 winkelkraampjes: Astro Snacks, Moon Burger, Star Souvenirs (west) / Comet Candy, Laser Lanes, Orbit Outfits (oost)
+- Middenlijn met 3 balken achter elkaar: struik-bak → park-map-scherm → struik-bak tussen de koopmuur
+- Koopmuur naar Main Street in 2 delen (`Door_MainStreet`, $750) met CoD-stijl koopcirkel (ProximityPrompt) en "THIS AREA IS TEMPORARILY CLOSED"
+- 8 onzichtbare zombie-spawnmarkers klaar voor Fase 2
+
+> De map leeft in het Roblox place-bestand (`Wavestudio.rbxl`), niet in de script-mappen. Scripts komen vanaf Fase 2 in `ServerScriptService/`, `ReplicatedStorage/` en `StarterPlayerScripts/` via Script Sync.
