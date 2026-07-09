@@ -18,8 +18,8 @@ Een zombie wave survival game in Roblox, geïnspireerd op CoD Black Ops Zombies,
 | 00 | GitHub-repo opzetten | ✅ Klaar |
 | 0 | Script Sync fixen + place-bestand verhuizen | ✅ Klaar |
 | 1 | Spawn-plein (Spaceland): plein, winkels, planters, gesplitste koopmuur + koopcirkel | ✅ Klaar |
-| 2 | Zombies: spawnen op markers, achtervolgen, melee-aanval | ⏭️ Volgende |
-| 3 | Startpistool: schieten (raycast), zombies doden | ⬜ |
+| 2 | Zombies: spawnen op markers, achtervolgen, melee-aanval | ✅ Klaar |
+| 3 | Startpistool: schieten (raycast), zombies doden | ⏭️ Volgende |
 | 4 | Geld: +punten per hit/kill + geld-HUD | ⬜ |
 | 5 | Rondes: golven die zwaarder worden + ronde-HUD | ⬜ |
 | 6 | Deuren kopen: Main Street-muur opent (beide delen) via geld | ⬜ |
@@ -38,3 +38,10 @@ Een zombie wave survival game in Roblox, geïnspireerd op CoD Black Ops Zombies,
 - 8 onzichtbare zombie-spawnmarkers klaar voor Fase 2
 
 > De map leeft in het Roblox place-bestand (`Wavestudio.rbxl`), niet in de script-mappen. Scripts komen vanaf Fase 2 in `ServerScriptService/`, `ReplicatedStorage/` en `StarterPlayerScripts/` via Script Sync.
+
+## De zombies (Fase 2)
+
+- 4 spawn-plekken (door Adam aangewezen): 2 achterhoeken naast de poort + ín Moon Burger + ín Orbit Outfits
+- `ReplicatedStorage/Config.luau`: de regelknoppenkast (zombie: health 60, speed 8, damage 15, cooldown 1.2s; testgolf: 5)
+- `ServerScriptService/ZombieFactory.luau`: bouwt de placeholder-zombie (groen, armen vooruit, rode neon-ogen)
+- `ServerScriptService/ZombieAI.server.luau`: golf-loop → spawnen → dichtstbijzijnde levende speler achtervolgen → meppen met cooldown; springt als hij vastzit (toonbank!)
