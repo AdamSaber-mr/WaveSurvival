@@ -126,6 +126,8 @@ barrierSegment("Barrier_Left", -27)
 barrierSegment("Barrier_Right", 27)
 hedgePlanter("Planter_Hedge_Gate", Vector3.new(0, 2.5, 65), doorModel)
 part({Name="HedgeTop", Position=Vector3.new(0, 7.5, 65), Size=Vector3.new(15, 4, 4), Color=C.hedge, Material=Enum.Material.Grass}, doorModel)
+-- anti-klim-strook: onzichtbaar, dekt ook de kiertjes naast de bak; zakt mee weg bij aankoop
+part({Name="Barrier_Topper", Position=Vector3.new(0, 11.5, 65), Size=Vector3.new(18, 5, 2.5), Transparency=1, CanCollide=true}, doorModel)
 
 -- Main Street teaser
 part({Name="MainStreetStub", Position=Vector3.new(0, 0.5, 80), Size=Vector3.new(44, 1, 28), Color=Color3.fromRGB(38, 40, 50), Material=Enum.Material.Slate}, plaza)
@@ -345,4 +347,39 @@ mbPrompt.Name = "BoxPrompt"; mbPrompt.ObjectText = "Mystery Box"; mbPrompt.Actio
 mbPrompt.HoldDuration = 0.6; mbPrompt.MaxActivationDistance = 10; mbPrompt.RequiresLineOfSight = false
 mbPrompt.Parent = crate
 
-print("[Rebuild] Wereld herbouwd: Map, spawn-markers, HUD, Pistol, Weapons, WallBuys, MysteryBox")
+-- ===== DEEL 6: PERK-AUTOMATEN (fase 9) =====
+local perkF = Instance.new("Folder"); perkF.Name = "PerkMachines"; perkF.Parent = map
+local function perkMachine(perkName, displayName, price, pos, rotY, color)
+	local m = Instance.new("Model"); m.Name = "Perk_" .. perkName; m.Parent = perkF
+	m:SetAttribute("Perk", perkName)
+	m:SetAttribute("Price", price)
+	local body = Instance.new("Part")
+	body.Name = "Body"; body.Anchored = true
+	body.Size = Vector3.new(3, 7, 2)
+	body.CFrame = CFrame.new(pos) * CFrame.Angles(0, math.rad(rotY), 0)
+	body.Color = color; body.Material = Enum.Material.SmoothPlastic
+	body.Parent = m
+	local top = Instance.new("Part")
+	top.Name = "TopGlow"; top.Anchored = true
+	top.Size = Vector3.new(3, 0.6, 2)
+	top.CFrame = body.CFrame * CFrame.new(0, 3.8, 0)
+	top.Color = color; top.Material = Enum.Material.Neon
+	top.Parent = m
+	local psg = Instance.new("SurfaceGui"); psg.Face = Enum.NormalId.Front; psg.Parent = body
+	local ptl = Instance.new("TextLabel")
+	ptl.Size = UDim2.new(1, 0, 0.35, 0); ptl.Position = UDim2.new(0, 0, 0.08, 0)
+	ptl.BackgroundTransparency = 1
+	ptl.Text = displayName; ptl.TextColor3 = Color3.fromRGB(245, 245, 250); ptl.TextScaled = true; ptl.Font = Enum.Font.Arcade
+	ptl.TextStrokeColor3 = Color3.fromRGB(20, 20, 25); ptl.TextStrokeTransparency = 0.3
+	ptl.Parent = psg
+	local plight = Instance.new("PointLight"); plight.Color = color; plight.Range = 8; plight.Brightness = 1; plight.Parent = top
+	local pprompt = Instance.new("ProximityPrompt")
+	pprompt.Name = "PerkPrompt"; pprompt.ObjectText = displayName; pprompt.ActionText = "Drink  ($" .. price .. ")"
+	pprompt.HoldDuration = 0.6; pprompt.MaxActivationDistance = 10; pprompt.RequiresLineOfSight = false
+	pprompt.Parent = body
+end
+perkMachine("Juggernog", "JUGGERNOG", 2500, Vector3.new(-14, 4.5, 80), 90, Color3.fromRGB(220, 60, 60))
+perkMachine("SpeedCola", "SPEED COLA", 2000, Vector3.new(-43, 4.5, -32), 90, Color3.fromRGB(80, 220, 100))
+perkMachine("StaminUp", "STAMIN-UP", 1500, Vector3.new(43, 4.5, -32), -90, Color3.fromRGB(240, 210, 80))
+
+print("[Rebuild] Wereld herbouwd: Map, spawn-markers, HUD, Pistol, Weapons, WallBuys, MysteryBox, PerkMachines")

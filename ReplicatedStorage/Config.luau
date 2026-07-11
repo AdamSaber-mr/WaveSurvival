@@ -57,6 +57,27 @@ Config.Weapons = {
 	},
 }
 
+Config.Perks = {
+	Juggernog = {
+		Price = 2500,
+		MaxHealth = 200,   -- dubbele levensbalk
+		Color = Color3.fromRGB(220, 60, 60),
+		Label = "JUG",
+	},
+	SpeedCola = {
+		Price = 2000,
+		ReloadMultiplier = 0.5,  -- herladen 2x zo snel
+		Color = Color3.fromRGB(80, 220, 100),
+		Label = "SPD",
+	},
+	StaminUp = {
+		Price = 1500,
+		WalkSpeed = 20,    -- sneller dan elke zombie (max zombie = 14)
+		Color = Color3.fromRGB(240, 210, 80),
+		Label = "STA",
+	},
+}
+
 Config.MysteryBox = {
 	Price = 950,             -- CoD-klassieker
 	RollTime = 3.5,          -- seconden roulette (namen flitsen, steeds langzamer)

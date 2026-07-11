@@ -212,6 +212,12 @@ reloadEvent.OnServerEvent:Connect(function(player)
 
 	tool:SetAttribute("Reloading", true)
 
+	-- Speed Cola: herladen 2x zo snel
+	local reloadMultiplier = 1
+	if player:GetAttribute("Perk_SpeedCola") and Config.Perks.SpeedCola.ReloadMultiplier then
+		reloadMultiplier = Config.Perks.SpeedCola.ReloadMultiplier
+	end
+
 	if weaponConfig.ShellReload then
 		-- shotgun: schelp voor schelp; een schot of wapenwissel onderbreekt netjes
 		while tool.Parent == character
@@ -219,7 +225,7 @@ reloadEvent.OnServerEvent:Connect(function(player)
 			and (tool:GetAttribute("Mag") or 0) < weaponConfig.MagSize
 			and (tool:GetAttribute("Reserve") or 0) ~= 0
 		do
-			task.wait(weaponConfig.ShellReloadTime)
+			task.wait(weaponConfig.ShellReloadTime * reloadMultiplier)
 			if not tool:GetAttribute("Reloading") or tool.Parent ~= character then break end
 			local currentMag = tool:GetAttribute("Mag") or 0
 			local currentReserve = tool:GetAttribute("Reserve") or 0
@@ -231,7 +237,7 @@ reloadEvent.OnServerEvent:Connect(function(player)
 		end
 	else
 		-- pistol/SMG: heel magazijn in één keer
-		task.wait(weaponConfig.ReloadTime)
+		task.wait(weaponConfig.ReloadTime * reloadMultiplier)
 		if tool.Parent == character and tool:GetAttribute("Reloading") then
 			local currentMag = tool:GetAttribute("Mag") or 0
 			local currentReserve = tool:GetAttribute("Reserve") or 0

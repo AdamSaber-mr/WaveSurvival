@@ -142,3 +142,48 @@ if player.Character then
 	watchCharacter(player.Character)
 end
 player.CharacterAdded:Connect(watchCharacter)
+
+-- ===== PERKS: icoontjes boven de wave-teller (linksonder) =====
+local Config2 = require(ReplicatedStorage:WaitForChild("Config"))
+
+local perkBar = Instance.new("Frame")
+perkBar.Name = "PerkBar"
+perkBar.AnchorPoint = Vector2.new(0, 1)
+perkBar.Position = UDim2.new(0, 24, 1, -72)
+perkBar.Size = UDim2.new(0, 200, 0, 34)
+perkBar.BackgroundTransparency = 1
+perkBar.Parent = hud
+local layout = Instance.new("UIListLayout")
+layout.FillDirection = Enum.FillDirection.Horizontal
+layout.Padding = UDim.new(0, 6)
+layout.Parent = perkBar
+
+local perkIcons = {}
+local function updatePerkIcons()
+	for perkName, perkConfig in pairs(Config2.Perks) do
+		local hasPerk = player:GetAttribute("Perk_" .. perkName) == true
+		local icon = perkIcons[perkName]
+		if hasPerk and not icon then
+			icon = Instance.new("TextLabel")
+			icon.Name = perkName
+			icon.Size = UDim2.new(0, 34, 0, 34)
+			icon.BackgroundColor3 = perkConfig.Color
+			icon.BackgroundTransparency = 0.15
+			icon.Text = perkConfig.Label
+			icon.TextColor3 = Color3.fromRGB(20, 20, 25)
+			icon.TextScaled = true
+			icon.Font = Enum.Font.Arcade
+			icon.Parent = perkBar
+			local corner = Instance.new("UICorner"); corner.CornerRadius = UDim.new(0, 6); corner.Parent = icon
+			perkIcons[perkName] = icon
+		elseif not hasPerk and icon then
+			icon:Destroy()
+			perkIcons[perkName] = nil
+		end
+	end
+end
+
+updatePerkIcons()
+for perkName in pairs(Config2.Perks) do
+	player:GetAttributeChangedSignal("Perk_" .. perkName):Connect(updatePerkIcons)
+end
