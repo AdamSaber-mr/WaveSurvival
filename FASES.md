@@ -24,8 +24,8 @@ Een zombie wave survival game in Roblox, geïnspireerd op CoD Black Ops Zombies,
 | 5 | Rondes: golven die zwaarder worden + ronde-HUD | ✅ Klaar |
 | 6 | Deuren kopen: Main Street-muur opent (beide delen) via geld | ✅ Klaar |
 | 7 | Wall-buys: wapens & ammo aan de muur + ammo/reload-systeem | ✅ Klaar |
-| 8 | Mystery Box | ⏭️ Volgende |
-| 9 | Perks (health, herlaad, snelheid) | ⬜ |
+| 8 | Mystery Box (roulette, take-window, Ray Gun) | ✅ Klaar |
+| 9 | Perks (health, herlaad, snelheid) | ⏭️ Volgende |
 | 10 | Dood, laatste overlevende, herstart | ⬜ |
 | 11 | Polish: modellen, geluid, lighting, sfeer | ⬜ |
 

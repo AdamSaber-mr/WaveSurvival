@@ -64,7 +64,7 @@ for _, player in ipairs(Players:GetPlayers()) do watchPlayer(player) end
 
 -- ===== SCHIETEN =====
 
-local function drawTracer(fromPosition, toPosition)
+local function drawTracer(fromPosition, toPosition, color)
 	local distance = (toPosition - fromPosition).Magnitude
 	local beam = Instance.new("Part")
 	beam.Anchored = true
@@ -72,7 +72,7 @@ local function drawTracer(fromPosition, toPosition)
 	beam.CanQuery = false
 	beam.CanTouch = false
 	beam.Material = Enum.Material.Neon
-	beam.Color = Color3.fromRGB(120, 220, 255)
+	beam.Color = color or Color3.fromRGB(120, 220, 255)
 	beam.Size = Vector3.new(0.15, 0.15, distance)
 	beam.CFrame = CFrame.lookAt(fromPosition, toPosition) * CFrame.new(0, 0, -distance / 2)
 	beam.Parent = workspace
@@ -120,7 +120,7 @@ local function fireRay(player, character, origin, tracerOrigin, direction, weapo
 	local result = workspace:Raycast(origin, direction, params)
 
 	local hitPosition = result and result.Position or (origin + direction)
-	drawTracer(tracerOrigin, hitPosition)
+	drawTracer(tracerOrigin, hitPosition, weaponConfig.TracerColor)
 
 	local zombieHumanoid = nil
 	if result and result.Instance then

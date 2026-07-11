@@ -45,6 +45,27 @@ Config.Weapons = {
 		ShellReload = true,      -- CoD-stijl: schelp voor schelp herladen...
 		ShellReloadTime = 0.6,   -- ...elke 0,6s één erbij (en je mag tussendoor vuren!)
 	},
+	RayGun = {
+		Damage = 100,        -- one-shot tot diep in de waves — dé hoofdprijs
+		FireCooldown = 0.5,
+		Range = 200,
+		MagSize = 20,
+		ReserveMax = 160,
+		ReloadTime = 1.5,
+		TracerColor = Color3.fromRGB(80, 255, 120), -- groene laser!
+		BoxOnly = true,      -- alleen te winnen uit de Mystery Box
+	},
+}
+
+Config.MysteryBox = {
+	Price = 950,             -- CoD-klassieker
+	RollTime = 3.5,          -- seconden roulette (namen flitsen, steeds langzamer)
+	TakeTime = 10,           -- seconden om je prijs te pakken, anders... weg geld
+	Pool = {
+		{ Weapon = "SMG",     Weight = 40 },
+		{ Weapon = "Shotgun", Weight = 40 },
+		{ Weapon = "RayGun",  Weight = 20 },  -- de jackpot: 1 op 5
+	},
 }
 
 Config.Economy = {

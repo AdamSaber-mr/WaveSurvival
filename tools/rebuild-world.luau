@@ -295,4 +295,54 @@ end
 wallBuy("SMG", 1000, 45, 25, Color3.fromRGB(90, 160, 255))
 wallBuy("Shotgun", 1500, -45, 25, Color3.fromRGB(255, 150, 0))
 
-print("[Rebuild] Wereld herbouwd: Map, spawn-markers, HUD, Pistol, Weapons, WallBuys")
+-- ===== DEEL 5: RAYGUN-TEMPLATE + MYSTERY BOX (fase 8) =====
+local rgun = Instance.new("Tool")
+rgun.Name = "RayGun"; rgun.ToolTip = "Ray Gun — the jackpot"; rgun.CanBeDropped = false
+local rh = gunPart({Name="Handle", Size=Vector3.new(0.5, 1.0, 0.5), Color=Color3.fromRGB(35, 40, 38)}, rgun)
+local rb = gunPart({Name="Body", Size=Vector3.new(0.55, 0.6, 1.8), Color=Color3.fromRGB(50, 60, 55)}, rgun)
+rb.CFrame = rh.CFrame * CFrame.new(0, 0.6, -0.5)
+local orb = gunPart({Name="Orb", Shape=Enum.PartType.Ball, Size=Vector3.new(0.7, 0.7, 0.7), Color=Color3.fromRGB(80, 255, 120), Material=Enum.Material.Neon}, rgun)
+orb.CFrame = rb.CFrame * CFrame.new(0, 0, -1.1)
+local ring = gunPart({Name="Ring", Size=Vector3.new(0.75, 0.15, 0.15), Color=Color3.fromRGB(80, 255, 120), Material=Enum.Material.Neon}, rgun)
+ring.CFrame = rb.CFrame * CFrame.new(0, 0.35, -0.3)
+weld(rh, rb); weld(rh, orb); weld(rh, ring)
+local rgLight = Instance.new("PointLight"); rgLight.Color = Color3.fromRGB(80, 255, 120); rgLight.Range = 6; rgLight.Brightness = 0.8; rgLight.Parent = orb
+rgun.GripPos = Vector3.new(0, -0.2, 0.1)
+rgun.Parent = weaponsF
+
+local mbox = Instance.new("Model"); mbox.Name = "MysteryBox"; mbox.Parent = map
+local crate = Instance.new("Part")
+crate.Name = "Crate"; crate.Anchored = true
+crate.Size = Vector3.new(4.5, 2.5, 3); crate.Position = Vector3.new(0, 2.25, 80)
+crate.Color = Color3.fromRGB(70, 50, 90); crate.Material = Enum.Material.WoodPlanks
+crate.Parent = mbox
+local lid = Instance.new("Part")
+lid.Name = "Lid"; lid.Anchored = true
+lid.Size = Vector3.new(4.7, 0.4, 3.2); lid.Position = Vector3.new(0, 3.7, 80)
+lid.Color = Color3.fromRGB(50, 35, 65); lid.Material = Enum.Material.WoodPlanks
+lid.Parent = mbox
+for _, face in ipairs({ Enum.NormalId.Front, Enum.NormalId.Back }) do
+	local sg3 = Instance.new("SurfaceGui"); sg3.Face = face; sg3.Parent = crate
+	local tl3 = Instance.new("TextLabel")
+	tl3.Size = UDim2.new(1, 0, 1, 0); tl3.BackgroundTransparency = 1
+	tl3.Text = "?"; tl3.TextColor3 = Color3.fromRGB(255, 220, 90); tl3.TextScaled = true; tl3.Font = Enum.Font.Arcade
+	tl3.Parent = sg3
+end
+local mbGlow = Instance.new("PointLight"); mbGlow.Color = Color3.fromRGB(200, 160, 255); mbGlow.Range = 10; mbGlow.Brightness = 1; mbGlow.Parent = crate
+local display = Instance.new("Part")
+display.Name = "Display"; display.Anchored = true
+display.Size = Vector3.new(1, 1, 1); display.Position = Vector3.new(0, 6.5, 80)
+display.Transparency = 1; display.CanCollide = false
+display.Parent = mbox
+local mbb = Instance.new("BillboardGui"); mbb.Size = UDim2.new(0, 260, 0, 60); mbb.MaxDistance = 80; mbb.Parent = display
+local mrl = Instance.new("TextLabel")
+mrl.Name = "RollLabel"; mrl.Size = UDim2.new(1, 0, 1, 0); mrl.BackgroundTransparency = 1
+mrl.Text = ""; mrl.TextColor3 = Color3.fromRGB(255, 220, 90); mrl.TextScaled = true; mrl.Font = Enum.Font.Arcade
+mrl.TextStrokeColor3 = Color3.fromRGB(20, 20, 25); mrl.TextStrokeTransparency = 0.4
+mrl.Parent = mbb
+local mbPrompt = Instance.new("ProximityPrompt")
+mbPrompt.Name = "BoxPrompt"; mbPrompt.ObjectText = "Mystery Box"; mbPrompt.ActionText = "Open  ($950)"
+mbPrompt.HoldDuration = 0.6; mbPrompt.MaxActivationDistance = 10; mbPrompt.RequiresLineOfSight = false
+mbPrompt.Parent = crate
+
+print("[Rebuild] Wereld herbouwd: Map, spawn-markers, HUD, Pistol, Weapons, WallBuys, MysteryBox")
