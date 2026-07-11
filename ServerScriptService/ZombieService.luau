@@ -4,6 +4,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local PathfindingService = game:GetService("PathfindingService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
 local ZombieFactory = require(script.Parent:WaitForChild("ZombieFactory"))
@@ -47,15 +48,65 @@ local function nearestAlivePlayer(fromPosition)
 	return best, bestDistance
 end
 
--- het "brein" van één zombie; draait in zijn eigen taak tot hij sterft
+-- ===== ZOMBIE-ZINTUIGEN =====
+
+-- kan de zombie de speler rechtstreeks zien? (geen muur ertussen)
+local function hasLineOfSight(fromPosition, targetPart)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { zombiesFolder }
+	local result = workspace:Raycast(fromPosition, targetPart.Position - fromPosition, params)
+	if not result then
+		return true -- niks ertussen
+	end
+	return result.Instance:IsDescendantOf(targetPart.Parent) -- we raakten de speler zelf
+end
+
+-- de "voelspriet": zit er vlak voor de zombie een obstakel (muurtje/toonbank)?
+local function obstacleAhead(rootPart, moveDirection)
+	local flat = Vector3.new(moveDirection.X, 0, moveDirection.Z)
+	if flat.Magnitude < 0.1 then
+		return false
+	end
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { zombiesFolder }
+	-- op kniehoogte, 3 studs vooruit
+	local result = workspace:Raycast(rootPart.Position + Vector3.new(0, -1, 0), flat.Unit * 3, params)
+	if not result or not result.Instance.CanCollide then
+		return false
+	end
+	-- spring niet tegen spelers/poppen aan, alleen tegen dingen
+	local model = result.Instance:FindFirstAncestorOfClass("Model")
+	if model and model:FindFirstChildOfClass("Humanoid") then
+		return false
+	end
+	-- is het obstakel laag genoeg om overheen te springen? (check op ~6 studs hoogte:
+	-- zit het dáár ook dicht, dan is het een hoge muur → niet springen, routeplanner lost het op)
+	local highResult = workspace:Raycast(rootPart.Position + Vector3.new(0, 3, 0), flat.Unit * 3, params)
+	if highResult and highResult.Instance.CanCollide then
+		return false
+	end
+	return true
+end
+
+-- het "brein" van één zombie; draait in zijn eigen taak tot hij sterft.
+-- CoD-logica: zie je de speler? recht erop af. Muur ertussen? routeplanner aan.
 local function runZombie(model)
 	local humanoid = model:FindFirstChildOfClass("Humanoid")
 	local rootPart = model.PrimaryPart
 	local zombieConfig = Config.Zombie
 
+	local path = PathfindingService:CreatePath({
+		AgentRadius = 2.5,
+		AgentHeight = 5,
+		AgentCanJump = true,
+	})
+	local waypoints = nil
+	local waypointIndex = 1
+	local lastPathComputeAt = 0
 	local lastAttackTime = 0
-	local lastPosition = rootPart.Position
-	local stuckTime = 0
+	local lastJumpAt = 0
 
 	humanoid.Died:Connect(function()
 		task.delay(zombieConfig.DespawnDelay, function()
@@ -66,8 +117,6 @@ local function runZombie(model)
 	while model.Parent and humanoid.Health > 0 do
 		local target, distance = nearestAlivePlayer(rootPart.Position)
 		if target then
-			humanoid:MoveTo(target.Position)
-
 			-- mep als we dichtbij genoeg zijn en de cooldown voorbij is
 			if distance <= zombieConfig.AttackRange and os.clock() - lastAttackTime >= zombieConfig.AttackCooldown then
 				lastAttackTime = os.clock()
@@ -77,19 +126,51 @@ local function runZombie(model)
 				end
 			end
 
-			-- vastzit-detectie: amper bewogen terwijl het doel ver weg is → spring (bijv. over een toonbank)
-			if (rootPart.Position - lastPosition).Magnitude < 0.5 and distance > 5 then
-				stuckTime += 0.25
-				if stuckTime >= 1 then
-					humanoid.Jump = true
-					stuckTime = 0
-				end
+			-- waar lopen we naartoe?
+			local moveGoal
+			if hasLineOfSight(rootPart.Position, target) then
+				-- vrij zicht: recht op de speler af (het enge CoD-gevoel)
+				waypoints = nil
+				moveGoal = target.Position
 			else
-				stuckTime = 0
+				-- muur ertussen: routeplanner (vers pad als het oude op/verlopen is)
+				if not waypoints or waypointIndex > #waypoints or os.clock() - lastPathComputeAt > 1.5 then
+					local ok = pcall(function()
+						path:ComputeAsync(rootPart.Position, target.Position)
+					end)
+					if ok and path.Status == Enum.PathStatus.Success then
+						waypoints = path:GetWaypoints()
+						waypointIndex = 2 -- nr 1 is onze eigen positie
+						lastPathComputeAt = os.clock()
+					else
+						waypoints = nil
+					end
+				end
+				local waypoint = waypoints and waypoints[waypointIndex]
+				if waypoint then
+					if waypoint.Action == Enum.PathWaypointAction.Jump then
+						humanoid.Jump = true
+					end
+					moveGoal = waypoint.Position
+					if (rootPart.Position - waypoint.Position).Magnitude < 4 then
+						waypointIndex += 1
+					end
+				else
+					moveGoal = target.Position -- geen pad te vinden: dan maar recht erop af
+				end
 			end
-			lastPosition = rootPart.Position
+			humanoid:MoveTo(moveGoal)
+
+			-- voelspriet: obstakel vlak voor je neus? METEEN springen (niet eerst duwen)
+			if os.clock() - lastJumpAt > 0.8
+				and humanoid.FloorMaterial ~= Enum.Material.Air
+				and obstacleAhead(rootPart, moveGoal - rootPart.Position)
+			then
+				humanoid.Jump = true
+				lastJumpAt = os.clock()
+			end
 		end
-		task.wait(0.25)
+		task.wait(0.2)
 	end
 end
 

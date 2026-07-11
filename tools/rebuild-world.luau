@@ -139,7 +139,7 @@ local points = {
 	{name = "Spawn_OrbitOutfits", pos = Vector3.new(41, 2, 40)},
 }
 for _, pt in ipairs(points) do
-	local p = part({Name=pt.name, Position=pt.pos, Size=Vector3.new(2, 2, 2), Transparency=1, CanCollide=false}, f)
+	local p = part({Name=pt.name, Position=pt.pos, Size=Vector3.new(2, 2, 2), Transparency=1, CanCollide=false, CanQuery=false, CanTouch=false}, f)
 	p:SetAttribute("Zone", "SpawnPlaza")
 end
 
