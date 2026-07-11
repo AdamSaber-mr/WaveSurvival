@@ -122,7 +122,10 @@ local function runZombie(model)
 				lastAttackTime = os.clock()
 				local targetHumanoid = target.Parent and target.Parent:FindFirstChildOfClass("Humanoid")
 				if targetHumanoid then
-					targetHumanoid:TakeDamage(zombieConfig.Damage)
+					-- IRON HIDE-kaart: tijdelijk halve schade voor deze speler
+					local targetPlayer = Players:GetPlayerFromCharacter(target.Parent)
+					local resist = targetPlayer and targetPlayer:GetAttribute("Card_DamageResist") or 1
+					targetHumanoid:TakeDamage(zombieConfig.Damage * resist)
 				end
 			end
 

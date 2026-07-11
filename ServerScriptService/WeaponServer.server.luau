@@ -81,7 +81,9 @@ end
 
 local function damageZombie(player, zombieHumanoid, weaponConfig)
 	local wasAlive = zombieHumanoid.Health > 0
-	zombieHumanoid:TakeDamage(weaponConfig.Damage)
+	-- POWER SHOT-kaart: tijdelijk dubbele schade
+	local damageBoost = player:GetAttribute("Card_DamageBoost") or 1
+	zombieHumanoid:TakeDamage(weaponConfig.Damage * damageBoost)
 	if wasAlive then
 		EconomyService.add(player, Config.Economy.HitReward)
 		if zombieHumanoid.Health <= 0 then

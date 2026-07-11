@@ -78,6 +78,31 @@ Config.Perks = {
 	},
 }
 
+Config.Cards = {
+	-- Fate & Fortune-kaarten: elke wave krijg je er één, activeren met F, daarna verbruikt
+	MadDash = {
+		DisplayName = "MAD DASH",
+		Emoji = "🏃",
+		Duration = 20,
+		SpeedBonus = 6,          -- tijdelijk +6 loopsnelheid
+		Color = Color3.fromRGB(240, 150, 60),
+	},
+	PowerShot = {
+		DisplayName = "POWER SHOT",
+		Emoji = "💥",
+		Duration = 20,
+		DamageMultiplier = 2,    -- wapens doen dubbele schade
+		Color = Color3.fromRGB(220, 70, 70),
+	},
+	IronHide = {
+		DisplayName = "IRON HIDE",
+		Emoji = "🛡️",
+		Duration = 20,
+		DamageTakenMultiplier = 0.5, -- zombies doen halve schade
+		Color = Color3.fromRGB(110, 160, 230),
+	},
+}
+
 Config.MysteryBox = {
 	Price = 950,             -- CoD-klassieker
 	RollTime = 3.5,          -- seconden roulette (namen flitsen, steeds langzamer)

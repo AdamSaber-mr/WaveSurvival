@@ -158,43 +158,8 @@ L.OutdoorAmbient = Color3.fromRGB(100, 100, 130)
 L.Ambient = Color3.fromRGB(70, 70, 90)
 
 -- ===== DEEL 2: HUD =====
-local sg2 = game:GetService("StarterGui")
-local oldHud = sg2:FindFirstChild("HUD")
-if oldHud then oldHud:Destroy() end
-local hud = Instance.new("ScreenGui"); hud.Name = "HUD"; hud.ResetOnSpawn = false
-
-local money = Instance.new("TextLabel")
-money.Name = "MoneyLabel"
-money.AnchorPoint = Vector2.new(1, 1); money.Position = UDim2.new(1, -24, 1, -24); money.Size = UDim2.new(0, 220, 0, 42)
-money.BackgroundTransparency = 1; money.Font = Enum.Font.Arcade; money.TextScaled = true
-money.TextXAlignment = Enum.TextXAlignment.Right
-money.TextColor3 = Color3.fromRGB(245, 205, 80); money.TextStrokeColor3 = Color3.fromRGB(20, 20, 25); money.TextStrokeTransparency = 0.4
-money.Text = "$500"; money.Parent = hud
-
-local roundLabel = Instance.new("TextLabel")
-roundLabel.Name = "RoundLabel"
-roundLabel.AnchorPoint = Vector2.new(0, 1); roundLabel.Position = UDim2.new(0, 24, 1, -24); roundLabel.Size = UDim2.new(0, 180, 0, 42)
-roundLabel.BackgroundTransparency = 1; roundLabel.Font = Enum.Font.Arcade; roundLabel.TextScaled = true
-roundLabel.TextXAlignment = Enum.TextXAlignment.Left
-roundLabel.TextColor3 = Color3.fromRGB(225, 85, 85); roundLabel.TextStrokeColor3 = Color3.fromRGB(20, 20, 25); roundLabel.TextStrokeTransparency = 0.4
-roundLabel.Text = "WAVE -"; roundLabel.Parent = hud
-
-local ammoL = Instance.new("TextLabel")
-ammoL.Name = "AmmoLabel"
-ammoL.AnchorPoint = Vector2.new(1, 1); ammoL.Position = UDim2.new(1, -24, 1, -72); ammoL.Size = UDim2.new(0, 300, 0, 38)
-ammoL.BackgroundTransparency = 1; ammoL.Font = Enum.Font.Arcade; ammoL.TextScaled = true
-ammoL.TextXAlignment = Enum.TextXAlignment.Right
-ammoL.TextColor3 = Color3.fromRGB(230, 230, 240); ammoL.TextStrokeColor3 = Color3.fromRGB(20, 20, 25); ammoL.TextStrokeTransparency = 0.4
-ammoL.Text = ""; ammoL.Parent = hud
-
-local announce = Instance.new("TextLabel")
-announce.Name = "RoundAnnounce"
-announce.AnchorPoint = Vector2.new(0.5, 0.5); announce.Position = UDim2.new(0.5, 0, 0.3, 0); announce.Size = UDim2.new(0, 500, 0, 80)
-announce.BackgroundTransparency = 1; announce.Font = Enum.Font.Arcade; announce.TextScaled = true
-announce.TextColor3 = Color3.fromRGB(225, 85, 85); announce.TextStrokeColor3 = Color3.fromRGB(20, 20, 25)
-announce.TextTransparency = 1; announce.TextStrokeTransparency = 1; announce.Text = ""
-announce.Parent = hud
-hud.Parent = sg2
+-- De HUD wordt sinds de CoD-HUD-update volledig door StarterPlayerScripts/HUDClient
+-- in code gebouwd (SpacelandHUD) — hier is dus niets meer te herbouwen.
 
 -- ===== DEEL 3: PISTOL IN STARTERPACK =====
 local sp = game:GetService("StarterPack")
