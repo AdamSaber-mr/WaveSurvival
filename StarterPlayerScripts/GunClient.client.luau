@@ -39,6 +39,29 @@ local function hookTool(tool)
 
 	local holding = false
 
+	-- ===== wapen-animaties (lokaal, puur visueel) =====
+	local baseGrip = tool.Grip
+
+	-- terugslag: het wapen schokt kort naar achteren/omhoog bij elk schot
+	local function recoilKick()
+		tool.Grip = baseGrip * CFrame.new(0, 0.03, 0.16) * CFrame.Angles(math.rad(5), 0, 0)
+		task.delay(0.06, function()
+			if tool.Parent and not tool:GetAttribute("Reloading") then
+				tool.Grip = baseGrip
+			end
+		end)
+	end
+
+	-- reload-dip: het wapen kantelt omlaag zolang je herlaadt
+	tool:GetAttributeChangedSignal("Reloading"):Connect(function()
+		if not tool.Parent then return end
+		if tool:GetAttribute("Reloading") then
+			tool.Grip = baseGrip * CFrame.new(0, -0.35, 0.1) * CFrame.Angles(math.rad(-35), math.rad(8), 0)
+		else
+			tool.Grip = baseGrip
+		end
+	end)
+
 	tool.Activated:Connect(function()
 		holding = true
 		while holding and tool.Parent == player.Character do
@@ -49,6 +72,7 @@ local function hookTool(tool)
 				break
 			end
 			fireEvent:FireServer(mouse.Hit.Position)
+			recoilKick()
 			if not weaponConfig.Auto then
 				break
 			end

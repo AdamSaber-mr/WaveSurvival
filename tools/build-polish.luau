@@ -11,21 +11,21 @@ for _, name in ipairs({ "SpaceAtmosphere", "SpaceSky", "SpaceBloom", "SpaceColor
 	local old = Lighting:FindFirstChild(name)
 	if old then old:Destroy() end
 end
-Lighting.ClockTime = 20.2
-Lighting.Brightness = 1.6
+Lighting.ClockTime = 19.3
+Lighting.Brightness = 2.3
 Lighting.GlobalShadows = true
 Lighting.EnvironmentDiffuseScale = 0.35
 Lighting.EnvironmentSpecularScale = 0.4
-Lighting.OutdoorAmbient = Color3.fromRGB(72, 78, 115)
-Lighting.Ambient = Color3.fromRGB(52, 56, 82)
+Lighting.OutdoorAmbient = Color3.fromRGB(118, 124, 162)
+Lighting.Ambient = Color3.fromRGB(92, 96, 124)
 
 local sky = Instance.new("Sky"); sky.Name = "SpaceSky"
 sky.StarCount = 4500; sky.SunAngularSize = 8; sky.MoonAngularSize = 14
 sky.Parent = Lighting
 local atmosphere = Instance.new("Atmosphere"); atmosphere.Name = "SpaceAtmosphere"
-atmosphere.Density = 0.32; atmosphere.Offset = 0.3
+atmosphere.Density = 0.22; atmosphere.Offset = 0.3
 atmosphere.Color = Color3.fromRGB(110, 118, 165); atmosphere.Decay = Color3.fromRGB(55, 62, 105)
-atmosphere.Glare = 0.25; atmosphere.Haze = 1.6
+atmosphere.Glare = 0.25; atmosphere.Haze = 1.2
 atmosphere.Parent = Lighting
 local bloom = Instance.new("BloomEffect"); bloom.Name = "SpaceBloom"
 bloom.Intensity = 0.55; bloom.Size = 28; bloom.Threshold = 1.05
@@ -64,7 +64,7 @@ local function lampPost(x, z)
 	local head = part({Name="Head", Position=Vector3.new(x, 13.4, z), Size=Vector3.new(1.3, 1.5, 1.3), Color=Color3.fromRGB(255, 228, 170), Material=Enum.Material.Neon}, m)
 	part({Name="Cap", Position=Vector3.new(x, 14.4, z), Size=Vector3.new(1.6, 0.4, 1.6), Color=Color3.fromRGB(35, 36, 44)}, m)
 	local light = Instance.new("PointLight")
-	light.Color = Color3.fromRGB(255, 214, 150); light.Range = 24; light.Brightness = 1.4; light.Shadows = true
+	light.Color = Color3.fromRGB(255, 214, 150); light.Range = 30; light.Brightness = 1.9; light.Shadows = true
 	light.Parent = head
 end
 lampPost(-22, -18); lampPost(22, -18); lampPost(-22, 46); lampPost(22, 46)

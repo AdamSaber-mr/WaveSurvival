@@ -110,6 +110,19 @@ local function runZombie(model)
 	local lastJumpAt = 0
 
 	humanoid.Died:Connect(function()
+		-- groene "poef" bij de dood
+		if rootPart then
+			local burst = Instance.new("ParticleEmitter")
+			burst.Color = ColorSequence.new(Color3.fromRGB(140, 200, 110))
+			burst.Lifetime = NumberRange.new(0.4, 0.9)
+			burst.Speed = NumberRange.new(3, 6)
+			burst.SpreadAngle = Vector2.new(180, 180)
+			burst.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.6), NumberSequenceKeypoint.new(1, 0) })
+			burst.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 1) })
+			burst.Enabled = false
+			burst.Parent = rootPart
+			burst:Emit(18)
+		end
 		task.delay(zombieConfig.DespawnDelay, function()
 			model:Destroy()
 		end)

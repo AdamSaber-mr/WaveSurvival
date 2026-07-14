@@ -747,3 +747,104 @@ local function updateGameOver()
 end
 updateGameOver()
 ReplicatedStorage:GetAttributeChangedSignal("GameOver"):Connect(updateGameOver)
+
+-- ===================== CROSSHAIR (first person) =====================
+-- klein, clean: een dot met vier korte streepjes eromheen
+local crosshair = Instance.new("Frame")
+crosshair.Name = "Crosshair"
+crosshair.AnchorPoint = Vector2.new(0.5, 0.5)
+crosshair.Position = UDim2.new(0.5, 0, 0.5, 0)
+crosshair.Size = UDim2.new(0, 24, 0, 24)
+crosshair.BackgroundTransparency = 1
+crosshair.ZIndex = 9
+crosshair.Parent = hud
+
+local dot = Instance.new("Frame")
+dot.AnchorPoint = Vector2.new(0.5, 0.5)
+dot.Position = UDim2.new(0.5, 0, 0.5, 0)
+dot.Size = UDim2.new(0, 3, 0, 3)
+dot.BackgroundColor3 = PAPER
+dot.BackgroundTransparency = 0.15
+dot.Parent = crosshair
+addCorner(dot, 2)
+
+local TICKS = {
+	{ UDim2.new(0.5, 0, 0, 2), UDim2.new(0, 2, 0, 6) },   -- boven
+	{ UDim2.new(0.5, 0, 1, -2), UDim2.new(0, 2, 0, 6) },  -- onder
+	{ UDim2.new(0, 2, 0.5, 0), UDim2.new(0, 6, 0, 2) },   -- links
+	{ UDim2.new(1, -2, 0.5, 0), UDim2.new(0, 6, 0, 2) },  -- rechts
+}
+for _, tick in ipairs(TICKS) do
+	local t = Instance.new("Frame")
+	t.AnchorPoint = Vector2.new(0.5, 0.5)
+	t.Position = tick[1]
+	t.Size = tick[2]
+	t.BackgroundColor3 = PAPER
+	t.BackgroundTransparency = 0.35
+	t.BorderSizePixel = 0
+	t.Parent = crosshair
+end
+
+-- crosshair verbergen voor geesten en tijdens game over
+local function updateCrosshair()
+	crosshair.Visible = player:GetAttribute("Spectator") ~= true
+		and ReplicatedStorage:GetAttribute("GameOver") == nil
+end
+updateCrosshair()
+player:GetAttributeChangedSignal("Spectator"):Connect(updateCrosshair)
+ReplicatedStorage:GetAttributeChangedSignal("GameOver"):Connect(updateCrosshair)
+
+-- ===================== BLOEDSCHERM (schade-feedback) =====================
+-- rode gloed langs de schermranden die opflitst als je geraakt wordt,
+-- en blijft pulseren zolang je bijna dood bent (CoD-stijl)
+local bloodVignette = Instance.new("Frame")
+bloodVignette.Name = "BloodVignette"
+bloodVignette.Size = UDim2.new(1, 0, 1, 0)
+bloodVignette.BackgroundColor3 = Color3.fromRGB(150, 10, 10)
+bloodVignette.BackgroundTransparency = 1
+bloodVignette.BorderSizePixel = 0
+bloodVignette.ZIndex = 8
+bloodVignette.Parent = overlayGui  -- dekt het hele scherm, ook onder de bovenbalk
+local vignetteGradient = Instance.new("UIGradient")
+vignetteGradient.Transparency = NumberSequence.new({
+	NumberSequenceKeypoint.new(0, 0),
+	NumberSequenceKeypoint.new(0.35, 1),
+	NumberSequenceKeypoint.new(0.65, 1),
+	NumberSequenceKeypoint.new(1, 0),
+})
+vignetteGradient.Rotation = 90
+vignetteGradient.Parent = bloodVignette
+
+local vignetteTarget = 1 -- 1 = onzichtbaar
+local function flashDamage(amount)
+	local intensity = math.clamp(amount / 40, 0.25, 0.75)
+	bloodVignette.BackgroundTransparency = 1 - intensity
+end
+
+local lastHealth = nil
+local function watchHealth(character)
+	local humanoid = character:WaitForChild("Humanoid", 5)
+	if not humanoid then return end
+	lastHealth = humanoid.Health
+	humanoid.HealthChanged:Connect(function(newHealth)
+		if lastHealth and newHealth < lastHealth then
+			flashDamage(lastHealth - newHealth)
+		end
+		lastHealth = newHealth
+	end)
+end
+if player.Character then watchHealth(player.Character) end
+player.CharacterAdded:Connect(watchHealth)
+
+-- uitfaden + laag-leven-puls in één hartslag-loop
+RunService.Heartbeat:Connect(function(deltaTime)
+	local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	local lowHealth = humanoid and humanoid.Health > 0 and humanoid.MaxHealth < 1e5
+		and (humanoid.Health / humanoid.MaxHealth) < 0.35
+	local floor = 1
+	if lowHealth then
+		floor = 0.72 + math.sin(os.clock() * 5) * 0.08 -- bange hartslag
+	end
+	local current = bloodVignette.BackgroundTransparency
+	bloodVignette.BackgroundTransparency = math.min(current + deltaTime * 1.4, floor)
+end)

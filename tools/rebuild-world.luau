@@ -161,65 +161,12 @@ L.Ambient = Color3.fromRGB(70, 70, 90)
 -- De HUD wordt sinds de CoD-HUD-update volledig door StarterPlayerScripts/HUDClient
 -- in code gebouwd (SpacelandHUD) — hier is dus niets meer te herbouwen.
 
--- ===== DEEL 3: PISTOL IN STARTERPACK =====
-local sp = game:GetService("StarterPack")
-local oldPistol = sp:FindFirstChild("Pistol")
-if oldPistol then oldPistol:Destroy() end
-local tool = Instance.new("Tool")
-tool.Name = "Pistol"; tool.ToolTip = "Pistol — click to shoot"; tool.CanBeDropped = false
-local handle = part({Name="Handle", Size=Vector3.new(0.45, 1.1, 0.5), Color=Color3.fromRGB(45, 45, 55), Material=Enum.Material.Metal, CanCollide=false, Anchored=false}, tool)
-local body = part({Name="Body", Size=Vector3.new(0.4, 0.4, 1.7), Color=Color3.fromRGB(70, 70, 85), Material=Enum.Material.Metal, CanCollide=false, Anchored=false}, tool)
-body.CFrame = handle.CFrame * CFrame.new(0, 0.65, -0.45)
-local glow2 = part({Name="Glow", Size=Vector3.new(0.42, 0.12, 0.5), Color=Color3.fromRGB(90, 160, 255), Material=Enum.Material.Neon, CanCollide=false, Anchored=false}, tool)
-glow2.CFrame = body.CFrame * CFrame.new(0, -0.2, 0.2)
-local w1 = Instance.new("WeldConstraint"); w1.Part0 = handle; w1.Part1 = body; w1.Parent = handle
-local w2 = Instance.new("WeldConstraint"); w2.Part0 = handle; w2.Part1 = glow2; w2.Parent = handle
-tool.GripPos = Vector3.new(0, -0.25, 0.1)
-tool.Parent = sp
+-- ===== DEEL 3: WAPENS =====
+-- Alle wapens (Pistol/SMG/Shotgun/RayGun) worden gebouwd door tools/build-weapons.luau
+-- (draai dat script na dit script).
 
--- ===== DEEL 4: WAPEN-TEMPLATES (ServerStorage) + WALL-BUYS (fase 7) =====
-local ss = game:GetService("ServerStorage")
-local oldW = ss:FindFirstChild("Weapons")
-if oldW then oldW:Destroy() end
-local weaponsF = Instance.new("Folder"); weaponsF.Name = "Weapons"; weaponsF.Parent = ss
-
-local function gunPart(props, parent)
-	local p = Instance.new("Part")
-	p.CanCollide = false
-	p.TopSurface = Enum.SurfaceType.Smooth
-	p.BottomSurface = Enum.SurfaceType.Smooth
-	p.Material = Enum.Material.Metal
-	for k, v in pairs(props) do p[k] = v end
-	p.Parent = parent
-	return p
-end
-local function weld(a, b)
-	local w = Instance.new("WeldConstraint"); w.Part0 = a; w.Part1 = b; w.Parent = a
-end
-
-local smg = Instance.new("Tool")
-smg.Name = "SMG"; smg.ToolTip = "SMG — hold to fire"; smg.CanBeDropped = false
-local sh = gunPart({Name="Handle", Size=Vector3.new(0.45, 1.0, 0.5), Color=Color3.fromRGB(40, 40, 50)}, smg)
-local sb = gunPart({Name="Body", Size=Vector3.new(0.42, 0.5, 2.2), Color=Color3.fromRGB(60, 60, 75)}, smg)
-sb.CFrame = sh.CFrame * CFrame.new(0, 0.6, -0.6)
-local sm = gunPart({Name="Mag", Size=Vector3.new(0.35, 0.9, 0.4), Color=Color3.fromRGB(50, 50, 60)}, smg)
-sm.CFrame = sh.CFrame * CFrame.new(0, 0.1, -0.9)
-local sgl = gunPart({Name="Glow", Size=Vector3.new(0.44, 0.1, 1.0), Color=Color3.fromRGB(90, 160, 255), Material=Enum.Material.Neon}, smg)
-sgl.CFrame = sb.CFrame * CFrame.new(0, -0.25, 0)
-weld(sh, sb); weld(sh, sm); weld(sh, sgl)
-smg.GripPos = Vector3.new(0, -0.2, 0.1)
-smg.Parent = weaponsF
-
-local sgun = Instance.new("Tool")
-sgun.Name = "Shotgun"; sgun.ToolTip = "Shotgun — devastating up close"; sgun.CanBeDropped = false
-local gh = gunPart({Name="Handle", Size=Vector3.new(0.5, 1.1, 0.55), Color=Color3.fromRGB(55, 40, 30), Material=Enum.Material.Wood}, sgun)
-local gb = gunPart({Name="Barrel", Size=Vector3.new(0.7, 0.45, 2.6), Color=Color3.fromRGB(70, 70, 80)}, sgun)
-gb.CFrame = gh.CFrame * CFrame.new(0, 0.65, -0.8)
-local gg = gunPart({Name="Glow", Size=Vector3.new(0.72, 0.1, 1.2), Color=Color3.fromRGB(255, 150, 0), Material=Enum.Material.Neon}, sgun)
-gg.CFrame = gb.CFrame * CFrame.new(0, -0.28, 0)
-weld(gh, gb); weld(gh, gg)
-sgun.GripPos = Vector3.new(0, -0.25, 0.15)
-sgun.Parent = weaponsF
+-- ===== DEEL 4: WALL-BUYS (fase 7) =====
+-- (wapen-templates: zie tools/build-weapons.luau)
 
 local oldWB = map:FindFirstChild("WallBuys")
 if oldWB then oldWB:Destroy() end
@@ -262,20 +209,8 @@ end
 wallBuy("SMG", 1000, 45, 25, Color3.fromRGB(90, 160, 255))
 wallBuy("Shotgun", 1500, -45, 25, Color3.fromRGB(255, 150, 0))
 
--- ===== DEEL 5: RAYGUN-TEMPLATE + MYSTERY BOX (fase 8) =====
-local rgun = Instance.new("Tool")
-rgun.Name = "RayGun"; rgun.ToolTip = "Ray Gun — the jackpot"; rgun.CanBeDropped = false
-local rh = gunPart({Name="Handle", Size=Vector3.new(0.5, 1.0, 0.5), Color=Color3.fromRGB(35, 40, 38)}, rgun)
-local rb = gunPart({Name="Body", Size=Vector3.new(0.55, 0.6, 1.8), Color=Color3.fromRGB(50, 60, 55)}, rgun)
-rb.CFrame = rh.CFrame * CFrame.new(0, 0.6, -0.5)
-local orb = gunPart({Name="Orb", Shape=Enum.PartType.Ball, Size=Vector3.new(0.7, 0.7, 0.7), Color=Color3.fromRGB(80, 255, 120), Material=Enum.Material.Neon}, rgun)
-orb.CFrame = rb.CFrame * CFrame.new(0, 0, -1.1)
-local ring = gunPart({Name="Ring", Size=Vector3.new(0.75, 0.15, 0.15), Color=Color3.fromRGB(80, 255, 120), Material=Enum.Material.Neon}, rgun)
-ring.CFrame = rb.CFrame * CFrame.new(0, 0.35, -0.3)
-weld(rh, rb); weld(rh, orb); weld(rh, ring)
-local rgLight = Instance.new("PointLight"); rgLight.Color = Color3.fromRGB(80, 255, 120); rgLight.Range = 6; rgLight.Brightness = 0.8; rgLight.Parent = orb
-rgun.GripPos = Vector3.new(0, -0.2, 0.1)
-rgun.Parent = weaponsF
+-- ===== DEEL 5: MYSTERY BOX (fase 8) =====
+-- (RayGun-template: zie tools/build-weapons.luau)
 
 local mbox = Instance.new("Model"); mbox.Name = "MysteryBox"; mbox.Parent = map
 local crate = Instance.new("Part")

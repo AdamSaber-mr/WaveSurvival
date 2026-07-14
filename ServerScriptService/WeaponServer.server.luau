@@ -113,6 +113,59 @@ local function pointBlankZombie(origin, aimDirection)
 	return best
 end
 
+-- mondingsvuur: korte flits + vonkjes uit de loop
+local function muzzleFlash(position)
+	local flash = Instance.new("Part")
+	flash.Anchored = true
+	flash.CanCollide = false
+	flash.CanQuery = false
+	flash.CanTouch = false
+	flash.Transparency = 1
+	flash.Size = Vector3.new(0.2, 0.2, 0.2)
+	flash.Position = position
+	flash.Parent = workspace
+	local emitter = Instance.new("ParticleEmitter")
+	emitter.Color = ColorSequence.new(Color3.fromRGB(255, 200, 90), Color3.fromRGB(255, 120, 40))
+	emitter.LightEmission = 1
+	emitter.Lifetime = NumberRange.new(0.04, 0.1)
+	emitter.Speed = NumberRange.new(4, 9)
+	emitter.SpreadAngle = Vector2.new(35, 35)
+	emitter.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.45), NumberSequenceKeypoint.new(1, 0) })
+	emitter.Enabled = false
+	emitter.Parent = flash
+	emitter:Emit(8)
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(255, 190, 110)
+	light.Range = 10
+	light.Brightness = 2.4
+	light.Parent = flash
+	Debris:AddItem(flash, 0.09)
+end
+
+-- bloedspetters op het inslagpunt
+local function bloodBurst(position)
+	local hit = Instance.new("Part")
+	hit.Anchored = true
+	hit.CanCollide = false
+	hit.CanQuery = false
+	hit.CanTouch = false
+	hit.Transparency = 1
+	hit.Size = Vector3.new(0.2, 0.2, 0.2)
+	hit.Position = position
+	hit.Parent = workspace
+	local emitter = Instance.new("ParticleEmitter")
+	emitter.Color = ColorSequence.new(Color3.fromRGB(140, 20, 20), Color3.fromRGB(80, 10, 10))
+	emitter.Lifetime = NumberRange.new(0.25, 0.5)
+	emitter.Speed = NumberRange.new(3, 7)
+	emitter.SpreadAngle = Vector2.new(180, 180)
+	emitter.Acceleration = Vector3.new(0, -22, 0)
+	emitter.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.28), NumberSequenceKeypoint.new(1, 0.05) })
+	emitter.Enabled = false
+	emitter.Parent = hit
+	emitter:Emit(10)
+	Debris:AddItem(hit, 0.6)
+end
+
 -- één straal: tracer + schade + geld bij een zombie-raak
 -- (de straal vertrekt vanaf ooghoogte — stabiel; de tracer tekent vanaf de loop — mooi)
 local function fireRay(player, character, origin, tracerOrigin, direction, weaponConfig)
@@ -141,6 +194,7 @@ local function fireRay(player, character, origin, tracerOrigin, direction, weapo
 
 	if zombieHumanoid then
 		damageZombie(player, zombieHumanoid, weaponConfig)
+		bloodBurst(hitPosition)
 	end
 end
 
@@ -178,12 +232,14 @@ fireEvent.OnServerEvent:Connect(function(player, targetPosition)
 	-- AIM-FIX: de straal vertrekt vanaf ooghoogte (stabiel punt) en niet vanuit de
 	-- loop — die zwaait mee met je rennende arm en stuurde kogels de verkeerde kant op.
 	local origin = rootPart.Position + Vector3.new(0, 1.5, 0)
+	local muzzle = tool:FindFirstChild("Muzzle")
 	local handle = tool:FindFirstChild("Handle")
-	local tracerOrigin = handle and handle.Position or origin
+	local tracerOrigin = (muzzle and muzzle.Position) or (handle and handle.Position) or origin
 	if (targetPosition - origin).Magnitude < 0.001 then return end
 
 	-- kogel eraf
 	tool:SetAttribute("Mag", mag - 1)
+	muzzleFlash(tracerOrigin)
 
 	-- shotgun: waaier van kogeltjes; andere wapens: één straal
 	local pellets = weaponConfig.Pellets or 1

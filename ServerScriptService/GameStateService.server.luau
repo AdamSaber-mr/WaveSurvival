@@ -120,6 +120,9 @@ local function watchCharacter(player, character)
 	if not humanoid then return end
 	if isSpectator(player) then
 		ghostify(character)
+		player.CameraMode = Enum.CameraMode.Classic -- geesten mogen vrij rondkijken
+	else
+		player.CameraMode = Enum.CameraMode.LockFirstPerson -- levenden spelen first person
 	end
 	humanoid.Died:Connect(function()
 		onDied(player)
