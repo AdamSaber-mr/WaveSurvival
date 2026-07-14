@@ -30,8 +30,12 @@ function EconomyService.add(player, amount)
 	player:SetAttribute("Money", EconomyService.get(player) + amount)
 end
 
--- probeert te betalen; geeft true terug als het lukte (voor deuren/wapens later)
+-- probeert te betalen; geeft true terug als het lukte
 function EconomyService.spend(player, amount)
+	-- geesten (spectators) kunnen niks kopen
+	if player:GetAttribute("Spectator") == true then
+		return false
+	end
 	ensureWallet(player)
 	local balance = EconomyService.get(player)
 	if balance < amount then

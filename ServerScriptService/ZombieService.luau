@@ -38,7 +38,8 @@ local function nearestAlivePlayer(fromPosition)
 		local character = player.Character
 		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 		local rootPart = character and character:FindFirstChild("HumanoidRootPart")
-		if humanoid and rootPart and humanoid.Health > 0 then
+		-- geesten (spectators) ruiken zombies niet: die worden volledig genegeerd
+		if humanoid and rootPart and humanoid.Health > 0 and player:GetAttribute("Spectator") ~= true then
 			local distance = (rootPart.Position - fromPosition).Magnitude
 			if distance < bestDistance then
 				best, bestDistance = rootPart, distance
@@ -184,6 +185,13 @@ function ZombieService.spawn(marker, statOverrides)
 	zombie:PivotTo(CFrame.new(marker.Position + Vector3.new(0, 2, 0)))
 	task.spawn(runZombie, zombie)
 	return zombie
+end
+
+-- alles opruimen (bij een game-reset)
+function ZombieService.clearAll()
+	for _, zombie in ipairs(zombiesFolder:GetChildren()) do
+		zombie:Destroy()
+	end
 end
 
 function ZombieService.aliveCount()

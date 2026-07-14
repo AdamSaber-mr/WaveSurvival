@@ -20,8 +20,13 @@ if playerGui:GetAttribute("HUDClientHooked") then
 end
 playerGui:SetAttribute("HUDClientHooked", true)
 
+-- Roblox' eigen health-balk rechtsboven uit (we tekenen zelf onze HUD)
+pcall(function()
+	game:GetService("StarterGui"):SetCoreGuiEnabled(Enum.CoreGuiType.Health, false)
+end)
+
 -- oude HUD's opruimen
-for _, name in ipairs({ "HUD", "SpacelandHUD" }) do
+for _, name in ipairs({ "HUD", "SpacelandHUD", "SpacelandOverlay" }) do
 	local legacy = playerGui:FindFirstChild(name)
 	if legacy then legacy:Destroy() end
 end
@@ -632,3 +637,113 @@ RunService.Heartbeat:Connect(function()
 		badgeText.Text = tostring(math.ceil(remaining))
 	end
 end)
+
+-- ===================== DOOD, SPECTATOR & GAME OVER =====================
+
+-- "YOU DIED": grote rode tekst die kort in beeld klapt
+local youDied = label(hud, {
+	Name = "YouDied",
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.new(0.5, 0, 0.38, 0),
+	Size = UDim2.new(0, 600, 0, 110),
+	Text = "YOU DIED",
+	Font = Enum.Font.Bangers,
+	TextColor3 = Color3.fromRGB(200, 40, 40),
+	TextTransparency = 1,
+	ZIndex = 10,
+})
+
+-- klein persistent "SPECTATING"-label zolang je een geest bent
+local spectating = label(hud, {
+	Name = "Spectating",
+	AnchorPoint = Vector2.new(0.5, 0),
+	Position = UDim2.new(0.5, 0, 0, 24),
+	Size = UDim2.new(0, 300, 0, 30),
+	Text = "SPECTATING",
+	Font = Enum.Font.GothamBold,
+	TextColor3 = GREY,
+	Visible = false,
+	ZIndex = 10,
+})
+
+local function updateSpectator()
+	local isGhost = player:GetAttribute("Spectator") == true
+	spectating.Visible = isGhost and ReplicatedStorage:GetAttribute("GameOver") == nil
+	if isGhost then
+		-- de dood-klap: fel in beeld, dan langzaam vervagen
+		youDied.TextTransparency = 0
+		local tween = TweenService:Create(youDied, TweenInfo.new(1.6, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			TextTransparency = 1,
+		})
+		task.delay(1.2, function() tween:Play() end)
+	end
+end
+player:GetAttributeChangedSignal("Spectator"):Connect(updateSpectator)
+
+-- GAME OVER: donkere overlay in een eigen laag die het HELE scherm bedekt
+-- (IgnoreGuiInset = true dekt ook de strook onder Roblox' bovenbalk af)
+local overlayGui = Instance.new("ScreenGui")
+overlayGui.Name = "SpacelandOverlay"
+overlayGui.ResetOnSpawn = false
+overlayGui.IgnoreGuiInset = true
+overlayGui.DisplayOrder = 10
+overlayGui.Parent = playerGui
+
+local overlay = Instance.new("Frame")
+overlay.Name = "GameOverOverlay"
+overlay.Size = UDim2.new(1, 0, 1, 0)
+overlay.BackgroundColor3 = Color3.new(0, 0, 0)
+overlay.BackgroundTransparency = 1
+overlay.Visible = false
+overlay.ZIndex = 11
+overlay.Parent = overlayGui
+
+local gameOverTitle = label(overlay, {
+	Name = "Title",
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.new(0.5, 0, 0.36, 0),
+	Size = UDim2.new(0, 640, 0, 120),
+	Text = "GAME OVER",
+	Font = Enum.Font.Bangers,
+	TextColor3 = Color3.fromRGB(210, 45, 45),
+	ZIndex = 12,
+})
+local gameOverSub = label(overlay, {
+	Name = "Subtitle",
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.new(0.5, 0, 0.52, 0),
+	Size = UDim2.new(0, 520, 0, 40),
+	Text = "",
+	Font = Enum.Font.GothamBold,
+	TextColor3 = PAPER,
+	ZIndex = 12,
+})
+local gameOverSurvivor = label(overlay, {
+	Name = "Survivor",
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.new(0.5, 0, 0.60, 0),
+	Size = UDim2.new(0, 520, 0, 30),
+	Text = "",
+	Font = Enum.Font.GothamBold,
+	TextColor3 = GOLD,
+	ZIndex = 12,
+})
+
+local function updateGameOver()
+	local wave = ReplicatedStorage:GetAttribute("GameOver")
+	if wave then
+		overlay.Visible = true
+		overlay.BackgroundTransparency = 1
+		gameOverSub.Text = "SURVIVED UNTIL WAVE " .. wave
+		local survivor = ReplicatedStorage:GetAttribute("LastSurvivor")
+		gameOverSurvivor.Text = survivor and ("LAST SURVIVOR: " .. string.upper(survivor)) or ""
+		spectating.Visible = false
+		TweenService:Create(overlay, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			BackgroundTransparency = 0.35,
+		}):Play()
+	else
+		overlay.Visible = false
+	end
+end
+updateGameOver()
+ReplicatedStorage:GetAttributeChangedSignal("GameOver"):Connect(updateGameOver)

@@ -147,6 +147,7 @@ end
 fireEvent.OnServerEvent:Connect(function(player, targetPosition)
 	if typeof(targetPosition) ~= "Vector3" then return end
 
+	if player:GetAttribute("Spectator") == true then return end -- geesten schieten niet
 	local character = player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	local rootPart = character and character:FindFirstChild("HumanoidRootPart")

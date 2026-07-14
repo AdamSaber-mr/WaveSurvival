@@ -70,11 +70,17 @@ function WeaponInventory.give(player, weaponName)
 	return true
 end
 
+-- alles vergeten (bij een game-reset): volgende spawn = alleen het start-pistool
+function WeaponInventory.reset(player)
+	purchasedWeapons[player] = nil
+end
+
 -- gekochte wapens teruggeven na de dood (de rugzak wordt bij respawn leeggeveegd)
 local function watchRespawns(player)
 	player.CharacterAdded:Connect(function()
 		local backpack = player:WaitForChild("Backpack")
 		task.wait(0.5) -- StarterPack eerst zijn werk laten doen
+		if player:GetAttribute("Spectator") == true then return end -- geesten krijgen niks
 		local owned = purchasedWeapons[player]
 		if not owned then return end
 		for weaponName in pairs(owned) do

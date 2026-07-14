@@ -4,11 +4,21 @@
 -- zodat elke tv (HUD) er direct naar kan kijken.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerStorage = game:GetService("ServerStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
 local ZombieService = require(script.Parent:WaitForChild("ZombieService"))
 
 local roundsConfig = Config.Rounds
+
+-- de reset-bel van GameStateService: game over → terug naar wave 1
+local resetRequested = false
+task.spawn(function()
+	local resetEvent = ServerStorage:WaitForChild("GameReset")
+	resetEvent.Event:Connect(function()
+		resetRequested = true
+	end)
+end)
 
 local function statsForRound(round)
 	return {
@@ -38,22 +48,33 @@ task.spawn(function()
 		print(("[Rondes] Ronde %d: %d zombies (health %d, snelheid %.1f)"):format(round, count, stats.Health, stats.WalkSpeed))
 
 		for i = 1, count do
+			if resetRequested then break end
 			local marker = markers[(i - 1) % #markers + 1]
 			ZombieService.spawn(marker, stats)
 			task.wait(roundsConfig.SpawnInterval)
 		end
 
-		-- wacht tot de hele ronde is uitgeschakeld
+		-- wacht tot de hele ronde is uitgeschakeld (of tot de reset-bel gaat)
 		repeat
 			task.wait(1)
-		until ZombieService.aliveCount() == 0
+		until ZombieService.aliveCount() == 0 or resetRequested
 
-		print(("[Rondes] Ronde %d uitgeschakeld! Volgende ronde over %d seconden"):format(round, roundsConfig.RestBetweenRounds))
+		if resetRequested then
+			-- game over: alle zombies opruimen en helemaal opnieuw beginnen
+			ZombieService.clearAll()
+			round = 0
+			ReplicatedStorage:SetAttribute("Round", 0)
+			resetRequested = false
+			print("[Rondes] Reset — wave 1 begint zo opnieuw")
+			task.wait(roundsConfig.FirstRoundDelay)
+		else
+			print(("[Rondes] Ronde %d uitgeschakeld! Volgende ronde over %d seconden"):format(round, roundsConfig.RestBetweenRounds))
 
-		-- iedereen die de wave uitspeelde verdient een ticket 🎟 (souvenir-valuta)
-		for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
-			player:SetAttribute("Tickets", (player:GetAttribute("Tickets") or 0) + 1)
+			-- iedereen die de wave uitspeelde verdient een ticket 🎟 (souvenir-valuta)
+			for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
+				player:SetAttribute("Tickets", (player:GetAttribute("Tickets") or 0) + 1)
+			end
+			task.wait(roundsConfig.RestBetweenRounds)
 		end
-		task.wait(roundsConfig.RestBetweenRounds)
 	end
 end)

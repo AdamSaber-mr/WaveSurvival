@@ -78,6 +78,12 @@ Config.Perks = {
 	},
 }
 
+Config.GameState = {
+	RespawnDelay = 2.5,        -- seconden "YOU DIED" voordat je als geest terugkomt
+	GameOverDuration = 7,      -- seconden game-over-scherm voordat alles reset
+	GhostTransparency = 0.6,   -- hoe doorzichtig een spectator-geest is
+}
+
 Config.Cards = {
 	-- Fate & Fortune-kaarten: elke wave krijg je er één, activeren met F, daarna verbruikt
 	MadDash = {

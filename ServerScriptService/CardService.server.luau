@@ -34,6 +34,7 @@ local function activateCard(player)
 	if not cardConfig then return end
 	if player:GetAttribute("CardReady") ~= true then return end
 
+	if player:GetAttribute("Spectator") == true then return end -- geesten spelen geen kaarten
 	local character = player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	if not humanoid or humanoid.Health <= 0 then return end
@@ -71,7 +72,9 @@ ReplicatedStorage:GetAttributeChangedSignal("Round"):Connect(function()
 	local round = ReplicatedStorage:GetAttribute("Round") or 0
 	if round <= 0 then return end
 	for _, player in ipairs(Players:GetPlayers()) do
-		dealCard(player)
+		if player:GetAttribute("Spectator") ~= true then
+			dealCard(player)
+		end
 	end
 end)
 

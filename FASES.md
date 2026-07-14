@@ -27,8 +27,8 @@ Een zombie wave survival game in Roblox, geïnspireerd op CoD Black Ops Zombies,
 | 8 | Mystery Box (roulette, take-window, Ray Gun) | ✅ Klaar |
 | 9 | Perks (health, herlaad, snelheid) | ✅ Klaar |
 | 9b | Spaceland-HUD (klapper, avatar-kaart, tickets) + Fate-kaarten (F) + cheat-commando's | ✅ Klaar |
-| 10 | Dood, laatste overlevende, herstart | ⏭️ Volgende |
-| 11 | Polish: modellen, geluid, lighting, sfeer | ⬜ |
+| 10 | Dood (YOU DIED), spectator-geesten, game-over + volledige reset | ✅ Klaar |
+| 11 | Polish: modellen, geluid, lighting, sfeer | ⏭️ Volgende |
 
 ## De map tot nu toe (Fase 1)
 
