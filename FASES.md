@@ -28,7 +28,9 @@ Een zombie wave survival game in Roblox, geïnspireerd op CoD Black Ops Zombies,
 | 9 | Perks (health, herlaad, snelheid) | ✅ Klaar |
 | 9b | Spaceland-HUD (klapper, avatar-kaart, tickets) + Fate-kaarten (F) + cheat-commando's | ✅ Klaar |
 | 10 | Dood (YOU DIED), spectator-geesten, game-over + volledige reset | ✅ Klaar |
-| 11 | Polish: modellen, geluid, lighting, sfeer | ⏭️ Volgende |
+| 11a | Polish: nachtpark — sterren/mist/bloom, lantaarns, slingers, winkel-aankleding, grote poort, draaiend reuzenrad, raket, planeten (SceneryService + tools/build-polish.luau) | ✅ Klaar |
+| 11b | Polish: zombie- en wapen-modellen redesign | ⏭️ Volgende |
+| 11c | Polish: geluid + schiet-effecten | ⬜ |
 
 ## De map tot nu toe (Fase 1)
 
