@@ -191,12 +191,92 @@ local function runZombie(model)
 	end
 end
 
--- spawn één zombie op een marker, optioneel met ronde-stats (Health/WalkSpeed)
+-- spawn één zombie op een marker: hij KLIMT uit de grond omhoog (met stofwolk)
 function ZombieService.spawn(marker, statOverrides)
 	local zombie = ZombieFactory.create(statOverrides)
 	zombie.Parent = zombiesFolder
-	zombie:PivotTo(CFrame.new(marker.Position + Vector3.new(0, 2, 0)))
-	task.spawn(runZombie, zombie)
+	local targetCF = CFrame.new(marker.Position + Vector3.new(0, 2, 0))
+		* CFrame.Angles(0, math.rad(Random.new():NextNumber(0, 360)), 0)
+	local rootPart = zombie.PrimaryPart
+
+	-- start onder de grond, vastgezet
+	rootPart.Anchored = true
+	zombie:PivotTo(targetCF * CFrame.new(0, -3.4, 0))
+
+	-- stofwolk op de uitklim-plek
+	local dust = Instance.new("ParticleEmitter")
+	dust.Color = ColorSequence.new(Color3.fromRGB(120, 115, 100))
+	dust.Lifetime = NumberRange.new(0.6, 1.2)
+	dust.Speed = NumberRange.new(1.5, 3.5)
+	dust.SpreadAngle = Vector2.new(70, 70)
+	dust.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.8), NumberSequenceKeypoint.new(1, 2.2) })
+	dust.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(1, 1) })
+	dust.Enabled = false
+	dust.Parent = rootPart
+	dust:Emit(22)
+
+	-- aardkluiten die opspatten (zwaarder, vallen snel terug)
+	local dirt = Instance.new("ParticleEmitter")
+	dirt.Color = ColorSequence.new(Color3.fromRGB(88, 74, 58))
+	dirt.Lifetime = NumberRange.new(0.4, 0.8)
+	dirt.Speed = NumberRange.new(6, 12)
+	dirt.SpreadAngle = Vector2.new(35, 35)
+	dirt.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(1, 0.15) })
+	dirt.Acceleration = Vector3.new(0, -60, 0)
+	dirt.Enabled = false
+	dirt.Parent = rootPart
+	dirt:Emit(12)
+
+	-- opengebarsten grond: donkere plek met scheur-lijnen die langzaam vervaagt
+	local crack = Instance.new("Model")
+	crack.Name = "GroundCrack"
+	local patch = Instance.new("Part")
+	patch.Anchored = true; patch.CanCollide = false; patch.CanQuery = false; patch.CanTouch = false
+	patch.Material = Enum.Material.Slate
+	patch.Color = Color3.fromRGB(38, 32, 26)
+	patch.Size = Vector3.new(4.2, 0.06, 4.2)
+	patch.CFrame = CFrame.new(marker.Position.X, 1.08, marker.Position.Z)
+		* CFrame.Angles(0, math.rad(Random.new():NextNumber(0, 360)), 0)
+	patch.Parent = crack
+	for i = 1, 4 do
+		local line = Instance.new("Part")
+		line.Anchored = true; line.CanCollide = false; line.CanQuery = false; line.CanTouch = false
+		line.Material = Enum.Material.SmoothPlastic
+		line.Color = Color3.fromRGB(16, 14, 12)
+		line.Size = Vector3.new(0.14, 0.02, 2 + i * 0.5)
+		line.CFrame = patch.CFrame * CFrame.new(0, 0.05, 0) * CFrame.Angles(0, math.rad(i * 87), 0) * CFrame.new(0, 0, 1.2)
+		line.Parent = crack
+	end
+	crack.Parent = workspace
+	task.delay(9, function()
+		-- rustig laten vervagen, dan opruimen
+		for step = 1, 10 do
+			for _, piece in ipairs(crack:GetChildren()) do
+				piece.Transparency = step / 10
+			end
+			task.wait(0.12)
+		end
+		crack:Destroy()
+	end)
+
+	-- omhoog klimmen (~0.9s), dan pas jagen
+	task.spawn(function()
+		local riseTime = 0.9
+		local elapsed = 0
+		while elapsed < riseTime and zombie.Parent do
+			local deltaTime = task.wait()
+			elapsed += deltaTime
+			local progress = math.min(elapsed / riseTime, 1)
+			-- ease-out: snel begin, zachte landing
+			local height = -3.4 * (1 - progress) * (1 - progress * 0.3)
+			zombie:PivotTo(targetCF * CFrame.new(0, height, 0))
+		end
+		if zombie.Parent and rootPart then
+			zombie:PivotTo(targetCF)
+			rootPart.Anchored = false
+			task.spawn(runZombie, zombie)
+		end
+	end)
 	return zombie
 end
 

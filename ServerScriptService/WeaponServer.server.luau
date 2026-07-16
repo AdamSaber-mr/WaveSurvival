@@ -24,6 +24,9 @@ fireEvent.Parent = remotes
 local reloadEvent = Instance.new("RemoteEvent")
 reloadEvent.Name = "ReloadWeapon"
 reloadEvent.Parent = remotes
+local hitConfirmEvent = Instance.new("RemoteEvent")
+hitConfirmEvent.Name = "HitConfirm"
+hitConfirmEvent.Parent = remotes
 
 local lastShotAt = {} -- [player] = tijdstip laatste schot (voor vuursnelheid-limiet)
 local rng = Random.new()
@@ -86,9 +89,13 @@ local function damageZombie(player, zombieHumanoid, weaponConfig)
 	zombieHumanoid:TakeDamage(weaponConfig.Damage * damageBoost)
 	if wasAlive then
 		EconomyService.add(player, Config.Economy.HitReward)
-		if zombieHumanoid.Health <= 0 then
+		local killed = zombieHumanoid.Health <= 0
+		if killed then
 			EconomyService.add(player, Config.Economy.KillReward)
+			player:SetAttribute("Kills", (player:GetAttribute("Kills") or 0) + 1)
 		end
+		-- hitmarker op de crosshair van de schutter (wit = raak, rood = kill)
+		hitConfirmEvent:FireClient(player, killed)
 	end
 end
 

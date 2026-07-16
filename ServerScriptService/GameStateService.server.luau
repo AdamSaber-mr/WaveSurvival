@@ -69,6 +69,7 @@ local function resetGame()
 	for _, player in ipairs(Players:GetPlayers()) do
 		player:SetAttribute("Spectator", nil)
 		player:SetAttribute("Money", Config.Economy.StartMoney)
+		player:SetAttribute("Kills", 0)
 		player:SetAttribute("Card", nil)
 		player:SetAttribute("CardReady", nil)
 		player:SetAttribute("CardActiveUntil", nil)

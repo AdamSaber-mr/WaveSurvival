@@ -1,12 +1,18 @@
--- ViewmodelClient v2: het first-person wapen-systeem (zoals echte FPS-games).
+-- ViewmodelClient v3: het first-person wapen-systeem (zoals echte FPS-games).
 -- Het échte wapen + je échte armen worden voor jou verborgen; in de plaats komt
--- een "viewmodel": nep-armen MET HANDEN + een verkleinde kopie van je wapen,
+-- een "viewmodel": twee lange slanke armen + een verkleinde kopie van je wapen,
 -- vastgemaakt aan de camera en volledig procedureel geanimeerd:
 --   · sway     — zwaait subtiel mee met je muis
 --   · bob      — deint op je passen (zwaarder bij sprint), ademt bij stilstand
 --   · recoil   — schokt naar achteren bij elk schot
---   · reload   — het wapen kantelt én je LINKERHAND komt in beeld om het
---                magazijn te verwisselen (twee tikjes) en verdwijnt weer
+--   · reload   — het wapen kantelt én je LINKERHAND duikt naar het magazijn
+-- v3-lessen (na de marketplace-wapens):
+--   · het wapen wordt als "ghost-model" gekloond en met Model:ScaleTo verkleind —
+--     zo schalen ook SpecialMesh/Union-onderdelen netjes mee
+--   · de SCHOUDERS zitten in CAMERA-ruimte (niet in wapen-ruimte!), net iets
+--     achter de lens en buiten beeld — zo komen de armen als lange slanke lijnen
+--     het beeld binnen (zoals de referentiefoto) en draaien ze niet raar mee
+--     met de wapen-kanteling
 -- Andere spelers zien gewoon je normale karakter met wapen.
 
 local Players = game:GetService("Players")
@@ -29,26 +35,62 @@ UserInputService.MouseIconEnabled = false
 
 local camera = workspace.CurrentCamera
 
--- wapens die je met twee handen vasthoudt (linkerhand vast op de voorgrip)
-local TWO_HANDED = { SMG = true, Shotgun = true }
-
 -- het wapen was te groot in beeld: alles wordt geschaald
-local SCALE = 0.45
+local SCALE = 0.4
 
--- basispositie van het wapen in beeld (rechtsonder, zoals CoD)
-local BASE_OFFSET_ONE = CFrame.new(0.45, -0.52, -1.05)
-local BASE_OFFSET_TWO = CFrame.new(0.34, -0.5, -1.15)
+-- ===== armen: lang en slank, zoals de referentiefoto =====
+local ARM_THICKNESS = 0.17
+local SLEEVE_THICKNESS = 0.22
+-- schouder-ankers in CAMERA-ruimte (x=rechts, y=omhoog, z=achter de lens).
+-- Ze hangen laag en nét buiten/achter het beeld, zodat alleen de lange
+-- onderarm zichtbaar het beeld in steekt.
+local RIGHT_SHOULDER = Vector3.new(0.7, -0.78, 0.15)
+local LEFT_SHOULDER = Vector3.new(-0.8, -0.82, 0.12)
 
--- linkerhand-posities (relatief aan de wapen-handle)
-local LEFT_PARKED = CFrame.new(-1.6, -1.8, 0.4)                                        -- uit beeld
-local LEFT_FOREGRIP = CFrame.new(-0.08, -0.12, -0.75) * CFrame.Angles(0, math.rad(15), math.rad(-20))
-local LEFT_MAG = CFrame.new(-0.06, -0.3, -0.32) * CFrame.Angles(math.rad(25), math.rad(15), math.rad(-20))
+-- ===== per-wapen griphouding =====
+-- Een pistool houd je anders vast dan een shotgun. Alle hand-offsets zijn
+-- relatief aan de wapen-Handle (die zit ín de greep van het wapen):
+--   base      = waar het wapen in beeld hangt (relatief aan de camera)
+--   rightHand = rechtervuist om de greep
+--   leftIdle  = linkerhand in rust (steun-kom / voorgrip / pump)
+--   leftMag   = waar de linkerhand naartoe duikt tijdens het herladen
+-- (getallen afgestemd op de wapens v3.1: Handle zit ín de pistoolgreep,
+--  de linkerhand-doelen zijn gemeten vanaf de echte handguard/pump-posities)
+local GRIPS = {
+	Pistol = {
+		base = CFrame.new(0.28, -0.5, -1.15) * CFrame.Angles(math.rad(2), math.rad(4), math.rad(2)),
+		rightHand = CFrame.new(0, -0.1, 0.03),
+		leftIdle = CFrame.new(-0.1, -0.2, 0.1) * CFrame.Angles(0, math.rad(15), math.rad(42)),
+		leftMag = CFrame.new(-0.06, -0.5, 0.05) * CFrame.Angles(math.rad(22), math.rad(10), math.rad(-16)),
+	},
+	SMG = {
+		base = CFrame.new(0.36, -0.52, -1.1) * CFrame.Angles(math.rad(2), math.rad(6), math.rad(2)),
+		rightHand = CFrame.new(0, -0.1, 0.03),
+		leftIdle = CFrame.new(0, 0.06, -0.52) * CFrame.Angles(0, math.rad(6), math.rad(-14)),
+		leftMag = CFrame.new(0, -0.15, -0.3) * CFrame.Angles(math.rad(24), math.rad(10), math.rad(-18)),
+	},
+	Shotgun = {
+		base = CFrame.new(0.36, -0.5, -1.1) * CFrame.Angles(math.rad(2), math.rad(6), math.rad(2)),
+		rightHand = CFrame.new(0, -0.1, 0.03),
+		leftIdle = CFrame.new(0, -0.03, -0.78) * CFrame.Angles(0, math.rad(5), math.rad(-10)),
+		leftMag = CFrame.new(0, -0.15, -0.38) * CFrame.Angles(math.rad(20), math.rad(8), math.rad(-14)),
+	},
+	RayGun = {
+		base = CFrame.new(0.4, -0.66, -1.65) * CFrame.Angles(math.rad(2), math.rad(4), math.rad(2)),
+		rightHand = CFrame.new(0, -0.12, 0.04),
+		leftIdle = CFrame.new(-0.12, -0.25, 0.12) * CFrame.Angles(0, math.rad(15), math.rad(42)),
+		leftMag = CFrame.new(-0.07, -0.6, 0.06) * CFrame.Angles(math.rad(22), math.rad(10), math.rad(-16)),
+	},
+}
+local DEFAULT_GRIP = GRIPS.Pistol
 
 -- ===================== RIG-STATUS =====================
 local rig = nil
-local rigParts = {}         -- wapen + rechterarm: { {part, offset} } relatief aan de handle
-local leftParts = {}        -- linker onderarm + hand: apart geanimeerd
+local rigParts = {}         -- wapen-delen: { {part, offset} } relatief aan de handle
+local leftParts = {}        -- linkerhand: apart geanimeerd (steun/voorgrip/reload)
+local armParts = nil        -- { rArm, rSleeve, lArm, lSleeve }: elke frame gespannen
 local currentTool = nil
+local currentGrip = DEFAULT_GRIP
 local toolConnections = {}
 
 local swayCF = CFrame.new()
@@ -56,13 +98,49 @@ local bobClock = 0
 local recoil = 0
 local reloadBlend = 0
 local reloadClock = 0
-local leftHandCF = LEFT_PARKED
+local leftHandCF = DEFAULT_GRIP.leftIdle
+
+-- ===================== HULZEN =====================
+-- bij elk schot wipt er rechts een leeg hulsje uit dat op de grond stuitert.
+-- Puur lokaal (alleen jij ziet je eigen hulzen) — kost bijna niks.
+local casingRng = Random.new()
+local function ejectCasing()
+	local isShotgun = currentTool and currentTool.Name == "Shotgun"
+	local casing = Instance.new("Part")
+	casing.Name = "Casing"
+	casing.Shape = Enum.PartType.Cylinder
+	casing.Size = isShotgun and Vector3.new(0.3, 0.11, 0.11) or Vector3.new(0.22, 0.07, 0.07)
+	casing.Color = isShotgun and Color3.fromRGB(190, 50, 50) or Color3.fromRGB(205, 165, 85)
+	casing.Material = isShotgun and Enum.Material.SmoothPlastic or Enum.Material.Metal
+	casing.CanCollide = true
+	casing.CanQuery = false
+	casing.CanTouch = false
+	-- start naast de loop (rechts van het wapen in beeld)
+	casing.CFrame = camera.CFrame * CFrame.new(0.5, -0.4, -1)
+	-- wipt naar rechtsboven weg, met een flinke tol erin
+	casing.AssemblyLinearVelocity = camera.CFrame.RightVector * casingRng:NextNumber(4, 7)
+		+ camera.CFrame.UpVector * casingRng:NextNumber(3, 5)
+		+ camera.CFrame.LookVector * casingRng:NextNumber(-1, 1)
+	casing.AssemblyAngularVelocity = Vector3.new(
+		casingRng:NextNumber(-25, 25), casingRng:NextNumber(-25, 25), casingRng:NextNumber(-25, 25))
+	casing.Parent = workspace -- door de client gemaakt = alleen jij ziet hem
+	task.delay(2, function()
+		if casing.Parent then
+			for step = 1, 6 do
+				casing.Transparency = step / 6
+				task.wait(0.05)
+			end
+			casing:Destroy()
+		end
+	end)
+end
 
 local function clearRig()
 	if rig then rig:Destroy() end
 	rig = nil
 	rigParts = {}
 	leftParts = {}
+	armParts = nil
 	for _, connection in ipairs(toolConnections) do
 		connection:Disconnect()
 	end
@@ -70,10 +148,14 @@ local function clearRig()
 	currentTool = nil
 end
 
-local function getSkinColor()
+-- huidkleur van je echte arm + shirtkleur van je torso (voor de mouwen)
+local function getBodyColors()
 	local character = player.Character
 	local rightArm = character and (character:FindFirstChild("Right Arm") or character:FindFirstChild("RightHand"))
-	return rightArm and rightArm.Color or Color3.fromRGB(234, 184, 146)
+	local torso = character and (character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso"))
+	local skin = rightArm and rightArm.Color or Color3.fromRGB(234, 184, 146)
+	local sleeve = torso and torso.Color or Color3.fromRGB(46, 60, 98)
+	return skin, sleeve
 end
 
 local function makeRigPart(props)
@@ -91,11 +173,6 @@ local function makeRigPart(props)
 	return p
 end
 
--- schaal een offset-CFrame: positie mee schalen, rotatie behouden
-local function scaleOffset(offset)
-	return CFrame.new(offset.Position * SCALE) * offset.Rotation
-end
-
 local function buildRig(tool)
 	clearRig()
 	local handle = tool:FindFirstChild("Handle")
@@ -106,52 +183,95 @@ local function buildRig(tool)
 	-- lokaal in workspace (client-objecten repliceren niet — alleen jij ziet dit)
 	rig.Parent = workspace
 
-	-- wapen-onderdelen kopiëren, verkleinen en relatief aan de handle vastleggen
-	local handleCF = handle.CFrame
+	-- ===== wapen als ghost-model klonen en uniform verkleinen =====
+	-- ScaleTo schaalt ALLES netjes mee (ook SpecialMesh/Union-delen van de
+	-- marketplace-wapens); daarna leggen we elk deel vast relatief aan de handle.
+	-- BELANGRIJK: we vertrouwen NIET op de live posities van het echte wapen —
+	-- die kunnen op de client nog "stale" zijn als je net van wapen wisselt
+	-- (halve replicatie = verstrooide viewmodel!). In plaats daarvan leest elke
+	-- clone zijn positie uit de VMOffset-sticker die bij het bouwen is gezet.
+	local ghost = Instance.new("Model")
+	local ghostHandle = nil
+	local cloneSources = {}
 	for _, part in ipairs(tool:GetChildren()) do
-		if part:IsA("BasePart") and part.Transparency < 1 then
+		if part:IsA("BasePart") then
 			local clone = part:Clone()
-			clone:ClearAllChildren()
-			for _, child in ipairs(part:GetChildren()) do
-				if child:IsA("PointLight") then
-					child:Clone().Parent = clone
+			for _, child in ipairs(clone:GetChildren()) do
+				-- meshes en lampjes houden, de rest (lasjes e.d.) weg
+				if not (child:IsA("DataModelMesh") or child:IsA("PointLight")) then
+					child:Destroy()
 				end
 			end
-			clone.Size = part.Size * SCALE
 			clone.Anchored = true
 			clone.CanCollide = false
 			clone.CanQuery = false
 			clone.CanTouch = false
 			clone.CastShadow = false
-			clone.Parent = rig
-			table.insert(rigParts, { part = clone, offset = scaleOffset(handleCF:ToObjectSpace(part.CFrame)) })
+			clone.Massless = true
+			clone.Parent = ghost
+			cloneSources[clone] = part
+			if part == handle then ghostHandle = clone end
 		end
 	end
+	if not ghostHandle then
+		ghost:Destroy()
+		return
+	end
+	-- poses herstellen vanaf de stickers (replicatie-proof), handle op de oorsprong
+	local liveHandleCF = handle.CFrame
+	ghostHandle.CFrame = CFrame.new()
+	for clone, source in pairs(cloneSources) do
+		if clone ~= ghostHandle then
+			local stored = source:GetAttribute("VMOffset")
+			if typeof(stored) == "CFrame" then
+				clone.CFrame = stored
+			else
+				-- geen sticker (oud wapen)? dan toch de live-foto als noodgreep
+				clone.CFrame = liveHandleCF:ToObjectSpace(source.CFrame)
+			end
+		end
+	end
+	ghost:ScaleTo(SCALE)
+	local ghostHandleCF = ghostHandle.CFrame
+	local startCF = camera.CFrame * (GRIPS[tool.Name] or DEFAULT_GRIP).base
+	for _, clone in ipairs(ghost:GetChildren()) do
+		if clone:IsA("BasePart") then
+			local offset = ghostHandleCF:ToObjectSpace(clone.CFrame)
+			if clone.Transparency < 1 then
+				clone.CFrame = startCF * offset -- meteen goed neerzetten (geen flits)
+				clone.Parent = rig
+				table.insert(rigParts, { part = clone, offset = offset })
+			end
+		end
+	end
+	ghost:Destroy()
 
-	-- ===== rechterarm + hand: houdt de grip écht vast =====
-	local skin = getSkinColor()
+	local grip = GRIPS[tool.Name] or DEFAULT_GRIP
+	local skin, sleeveColor = getBodyColors()
 	local skinDark = Color3.new(skin.R * 0.92, skin.G * 0.92, skin.B * 0.92)
 
-	-- lange arm die vanuit de rechteronderhoek van je scherm naar de grip loopt (zoals echte FPS-armen)
-	local rightForearm = makeRigPart({ Name = "RightForearm", Size = Vector3.new(0.26, 0.26, 1.6), Color = skin })
-	table.insert(rigParts, { part = rightForearm, offset = CFrame.new(0.3, -0.5, 0.75) * CFrame.Angles(math.rad(-28), math.rad(-14), 0) })
+	-- rechterhand: vuist om de greep + vingers eromheen (klein en plat)
+	local rightHand = makeRigPart({ Name = "RightHand", Size = Vector3.new(0.16, 0.16, 0.2), Color = skinDark })
+	table.insert(rigParts, { part = rightHand, offset = grip.rightHand })
+	local rightFingers = makeRigPart({ Name = "RightFingers", Size = Vector3.new(0.14, 0.15, 0.06), Color = skin })
+	table.insert(rigParts, { part = rightFingers, offset = grip.rightHand * CFrame.new(0, -0.02, -0.12) })
 
-	-- de vuist: palm om de grip + vingers over de voorkant + duim aan de zijkant
-	local rightPalm = makeRigPart({ Name = "RightHand", Size = Vector3.new(0.26, 0.34, 0.3), Color = skinDark })
-	table.insert(rigParts, { part = rightPalm, offset = CFrame.new(0.05, -0.05, 0.02) })
-	local rightFingers = makeRigPart({ Name = "RightFingers", Size = Vector3.new(0.24, 0.3, 0.1), Color = skin })
-	table.insert(rigParts, { part = rightFingers, offset = CFrame.new(0, -0.06, -0.14) })
-	local rightThumb = makeRigPart({ Name = "RightThumb", Size = Vector3.new(0.08, 0.18, 0.08), Color = skin })
-	table.insert(rigParts, { part = rightThumb, offset = CFrame.new(-0.12, 0.04, 0.0) * CFrame.Angles(0, 0, math.rad(18)) })
+	-- linkerhand: vuist + vingers + duim, apart geanimeerd (steun/voorgrip/reload)
+	local leftHand = makeRigPart({ Name = "LeftHand", Size = Vector3.new(0.18, 0.18, 0.22), Color = skinDark })
+	table.insert(leftParts, { part = leftHand, offset = CFrame.new() })
+	local leftFingers = makeRigPart({ Name = "LeftFingers", Size = Vector3.new(0.15, 0.17, 0.07), Color = skin })
+	table.insert(leftParts, { part = leftFingers, offset = CFrame.new(0.08, 0.04, -0.12) * CFrame.Angles(0, 0, math.rad(10)) })
+	local leftThumb = makeRigPart({ Name = "LeftThumb", Size = Vector3.new(0.06, 0.11, 0.06), Color = skin })
+	table.insert(leftParts, { part = leftThumb, offset = CFrame.new(-0.07, 0.05, 0.02) * CFrame.Angles(0, 0, math.rad(-14)) })
 
-	-- ===== linkerarm + hand: apart geanimeerd (voorgrip of reload) =====
-	local leftForearm = makeRigPart({ Name = "LeftForearm", Size = Vector3.new(0.3, 0.3, 0.75), Color = skin })
-	table.insert(leftParts, { part = leftForearm, offset = CFrame.new(-0.12, -0.16, 0.42) * CFrame.Angles(math.rad(-18), math.rad(22), 0) })
-
-	local leftHand = makeRigPart({ Name = "LeftHand", Size = Vector3.new(0.28, 0.3, 0.3), Color = skinDark })
-	table.insert(leftParts, { part = leftHand, offset = CFrame.new(0, 0, 0) })
-	local leftFingers = makeRigPart({ Name = "LeftFingers", Size = Vector3.new(0.22, 0.26, 0.1), Color = skin })
-	table.insert(leftParts, { part = leftFingers, offset = CFrame.new(0.1, 0.02, -0.1) })
+	-- armen + mouwen: elke frame opnieuw gespannen tussen schouder (camera-
+	-- ruimte) en hand — lengte maakt niet uit, we maken ze ruim lang genoeg
+	armParts = {
+		rArm = makeRigPart({ Name = "RightArm", Size = Vector3.new(ARM_THICKNESS, ARM_THICKNESS, 1), Color = skin }),
+		rSleeve = makeRigPart({ Name = "RightSleeve", Size = Vector3.new(SLEEVE_THICKNESS, SLEEVE_THICKNESS, 1), Color = sleeveColor }),
+		lArm = makeRigPart({ Name = "LeftArm", Size = Vector3.new(ARM_THICKNESS, ARM_THICKNESS, 1), Color = skin }),
+		lSleeve = makeRigPart({ Name = "LeftSleeve", Size = Vector3.new(SLEEVE_THICKNESS, SLEEVE_THICKNESS, 1), Color = sleeveColor }),
+	}
 
 	-- rig-lampje: anders is het wapen 's nachts zwart-op-zwart
 	local lightAnchor = makeRigPart({ Name = "RigLight", Size = Vector3.new(0.1, 0.1, 0.1), Transparency = 1 })
@@ -164,7 +284,8 @@ local function buildRig(tool)
 	rigLight.Parent = lightAnchor
 
 	currentTool = tool
-	leftHandCF = TWO_HANDED[tool.Name] and LEFT_FOREGRIP or LEFT_PARKED
+	currentGrip = grip
+	leftHandCF = grip.leftIdle
 
 	-- recoil-trigger: magazijn telt af = er is geschoten
 	local lastMag = tool:GetAttribute("Mag")
@@ -172,9 +293,24 @@ local function buildRig(tool)
 		local newMag = tool:GetAttribute("Mag")
 		if lastMag and newMag and newMag < lastMag then
 			recoil = 1
+			ejectCasing()
 		end
 		lastMag = newMag
 	end))
+end
+
+-- arm + mouw spannen tussen schouder (camera-ruimte) en pols (wereld-positie)
+local function stretchArm(arm, sleeve, shoulderCam, wristWorld, sleeveFraction)
+	local camCF = camera.CFrame
+	local wristCam = camCF:ToObjectSpace(CFrame.new(wristWorld)).Position
+	local delta = wristCam - shoulderCam
+	local length = delta.Magnitude
+	if length < 0.05 then return end
+	arm.Size = Vector3.new(ARM_THICKNESS, ARM_THICKNESS, length)
+	arm.CFrame = camCF * CFrame.lookAt(shoulderCam + delta / 2, wristCam)
+	local sleeveLength = length * sleeveFraction
+	sleeve.Size = Vector3.new(SLEEVE_THICKNESS, SLEEVE_THICKNESS, sleeveLength)
+	sleeve.CFrame = camCF * CFrame.lookAt(shoulderCam + delta.Unit * (sleeveLength / 2), wristCam)
 end
 
 -- ===================== EQUIP/UNEQUIP VOLGEN =====================
@@ -253,7 +389,7 @@ RunService:BindToRenderStep("SpacelandViewmodel", Enum.RenderPriority.Camera.Val
 	recoil = math.max(recoil - deltaTime * 7, 0)
 	local recoilCF = CFrame.new(0, recoil * 0.05, recoil * 0.18) * CFrame.Angles(math.rad(recoil * 5), 0, 0)
 
-	-- 4) reload: wapen kantelt licht + linkerhand komt het magazijn verwisselen
+	-- 4) reload: wapen kantelt licht + linkerhand duikt naar het magazijn
 	local reloading = currentTool:GetAttribute("Reloading") == true
 	reloadBlend = math.clamp(reloadBlend + (reloading and 1 or -1) * deltaTime * 4.5, 0, 1)
 	if reloading then
@@ -266,23 +402,31 @@ RunService:BindToRenderStep("SpacelandViewmodel", Enum.RenderPriority.Camera.Val
 		* CFrame.Angles(math.rad(-10 * reloadBlend), math.rad(12 * reloadBlend), math.rad(-32 * reloadBlend))
 
 	-- linkerhand-doel bepalen
-	local idleLeft = TWO_HANDED[currentTool.Name] and LEFT_FOREGRIP or LEFT_PARKED
+	local idleLeft = currentGrip.leftIdle
 	local targetLeft = idleLeft
 	if reloadBlend > 0.05 then
 		-- duidelijke beweging: hand omhoog naar het magazijn → ruk omlaag (mag eruit)
 		-- → duw omhoog (nieuwe mag erin) → vasthouden tot het herladen klaar is
 		local pull = math.sin(math.clamp(reloadClock * 4, 0, math.pi)) * 0.3
-		targetLeft = LEFT_MAG * CFrame.new(0, -pull, 0.04 * pull)
+		targetLeft = currentGrip.leftMag * CFrame.new(0, -pull, 0.04 * pull)
 	end
 	leftHandCF = leftHandCF:Lerp(targetLeft, math.clamp(deltaTime * 10, 0, 1))
 
 	-- alles plaatsen
-	local baseOffset = TWO_HANDED[currentTool.Name] and BASE_OFFSET_TWO or BASE_OFFSET_ONE
+	local baseOffset = currentGrip.base
 	local handleCF = camera.CFrame * baseOffset * swayCF * bobCF * recoilCF * reloadCF
 	for _, entry in ipairs(rigParts) do
 		entry.part.CFrame = handleCF * entry.offset
 	end
 	for _, entry in ipairs(leftParts) do
 		entry.part.CFrame = handleCF * leftHandCF * entry.offset
+	end
+
+	-- armen: elke frame gespannen tussen de camera-schouders en de handen
+	if armParts then
+		local rightWristWorld = (handleCF * currentGrip.rightHand * CFrame.new(0.03, -0.06, 0.13)).Position
+		stretchArm(armParts.rArm, armParts.rSleeve, RIGHT_SHOULDER, rightWristWorld, 0.78)
+		local leftWristWorld = (handleCF * leftHandCF * CFrame.new(-0.02, -0.05, 0.11)).Position
+		stretchArm(armParts.lArm, armParts.lSleeve, LEFT_SHOULDER, leftWristWorld, 0.75)
 	end
 end)

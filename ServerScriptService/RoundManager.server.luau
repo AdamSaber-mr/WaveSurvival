@@ -70,7 +70,7 @@ task.spawn(function()
 		else
 			print(("[Rondes] Ronde %d uitgeschakeld! Volgende ronde over %d seconden"):format(round, roundsConfig.RestBetweenRounds))
 
-			-- iedereen die de wave uitspeelde verdient een ticket 🎟 (souvenir-valuta)
+			-- iedereen die de wave uitspeelde verdient een ticket (souvenir-valuta)
 			for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
 				player:SetAttribute("Tickets", (player:GetAttribute("Tickets") or 0) + 1)
 			end

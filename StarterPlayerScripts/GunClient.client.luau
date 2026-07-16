@@ -20,15 +20,23 @@ player:SetAttribute("GunClientHooked", true)
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local fireEvent = remotes:WaitForChild("FireWeapon")
 local reloadEvent = remotes:WaitForChild("ReloadWeapon")
-local mouse = player:GetMouse()
 
--- RICHT-FIX: je eigen poppetje (inclusief zwaaiende armen en wapen) is
--- onzichtbaar voor de muis-richtstraal — anders "raak" je jezelf tijdens het rennen
--- en vliegen je kogels alle kanten op.
-mouse.TargetFilter = player.Character
-player.CharacterAdded:Connect(function(character)
-	mouse.TargetFilter = character
-end)
+-- RICHT-FIX v2: niet meer richten via de muis. De muis rekent namelijk met de
+-- Roblox-bovenbalk mee en wees daardoor nét een stukje te hoog — kogels vlogen
+-- boven de crosshair langs. Nu schieten we zelf een straal door het EXACTE
+-- midden van het scherm: precies het punt waar de crosshair getekend wordt.
+-- (je eigen poppetje wordt overgeslagen; viewmodel/hulzen hebben CanQuery=false
+-- en zijn dus sowieso onzichtbaar voor de straal)
+local function aimTarget()
+	local camera = workspace.CurrentCamera
+	local viewport = camera.ViewportSize
+	local ray = camera:ViewportPointToRay(viewport.X / 2, viewport.Y / 2)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { player.Character }
+	local result = workspace:Raycast(ray.Origin, ray.Direction * 1000, params)
+	return result and result.Position or (ray.Origin + ray.Direction * 1000)
+end
 
 local function hookTool(tool)
 	if not tool:IsA("Tool") then return end
@@ -71,7 +79,7 @@ local function hookTool(tool)
 				reloadEvent:FireServer()
 				break
 			end
-			fireEvent:FireServer(mouse.Hit.Position)
+			fireEvent:FireServer(aimTarget())
 			recoilKick()
 			if not weaponConfig.Auto then
 				break

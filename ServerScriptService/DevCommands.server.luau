@@ -107,7 +107,7 @@ end)
 makeCommand("tickets", function(player, args)
 	local amount = tonumber(args[1]) or 100
 	player:SetAttribute("Tickets", amount)
-	print("[Dev] " .. player.Name .. " → 🎟 " .. amount)
+	print("[Dev] " .. player.Name .. " → tickets: " .. amount)
 end)
 
 makeCommand("clear", function(player)

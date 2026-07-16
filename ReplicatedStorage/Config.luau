@@ -86,23 +86,24 @@ Config.GameState = {
 
 Config.Cards = {
 	-- Fate & Fortune-kaarten: elke wave krijg je er één, activeren met F, daarna verbruikt
+	-- Icon = zelf getekende plaatjes (2026-07-16, geen emojis in de game)
 	MadDash = {
 		DisplayName = "MAD DASH",
-		Emoji = "🏃",
+		Icon = "rbxassetid://129576819690037", -- rennende figuur met vaartstrepen
 		Duration = 20,
 		SpeedBonus = 6,          -- tijdelijk +6 loopsnelheid
 		Color = Color3.fromRGB(240, 150, 60),
 	},
 	PowerShot = {
 		DisplayName = "POWER SHOT",
-		Emoji = "💥",
+		Icon = "rbxassetid://86446365245304", -- kogel met knal-ster
 		Duration = 20,
 		DamageMultiplier = 2,    -- wapens doen dubbele schade
 		Color = Color3.fromRGB(220, 70, 70),
 	},
 	IronHide = {
 		DisplayName = "IRON HIDE",
-		Emoji = "🛡️",
+		Icon = "rbxassetid://89240286861643", -- ridderschild met ster
 		Duration = 20,
 		DamageTakenMultiplier = 0.5, -- zombies doen halve schade
 		Color = Color3.fromRGB(110, 160, 230),

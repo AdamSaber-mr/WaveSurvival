@@ -85,6 +85,25 @@ if perkMachines then
 	end
 end
 
+-- kapotte stroomkabels bij de spawn-deuren (met Spark-attribute): onregelmatig knetteren
+for _, descendant in ipairs(deco:GetDescendants()) do
+	if descendant:IsA("BasePart") and descendant:GetAttribute("Spark") then
+		local emitter = descendant:FindFirstChildOfClass("ParticleEmitter")
+		if emitter then
+			task.spawn(function()
+				while descendant.Parent do
+					task.wait(rng:NextNumber(2, 7))
+					-- 1 tot 3 knettertjes vlak achter elkaar
+					for _ = 1, rng:NextInteger(1, 3) do
+						emitter:Emit(rng:NextInteger(4, 10))
+						task.wait(rng:NextNumber(0.08, 0.25))
+					end
+				end
+			end)
+		end
+	end
+end
+
 -- SPACELAND-neonbalk: heel af en toe een spookachtig flikkertje
 local archBeam
 local zones = map and map:FindFirstChild("Zones")

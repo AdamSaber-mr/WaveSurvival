@@ -74,12 +74,12 @@ function ZombieFactory.create(overrides)
 	vest.CFrame = body * CFrame.new(0, 0.42 * scale, 0)
 	-- naamplaatje op de borst
 	local tag = makePart({Name="NameTag", Size=Vector3.new(0.42, 0.22, 0.06) * scale, Color=Color3.fromRGB(235, 235, 240)}, model)
-	tag.CFrame = body * CFrame.new(-0.55 * scale, 0.62 * scale, -0.66 * scale)
+	tag.CFrame = body * CFrame.new(-0.55 * scale, 0.62 * scale, -0.72 * scale)
 
 	-- kledingflarden onder het vest
 	for i = 1, 3 do
 		local flap = makePart({Name="Flap", Size=Vector3.new(0.5, rng:NextNumber(0.5, 0.9), 0.08) * scale, Color=uniformDark, Material=Enum.Material.Fabric}, model)
-		flap.CFrame = body * CFrame.new((-0.7 + i * 0.5) * scale, -0.35 * scale, -0.55 * scale) * CFrame.Angles(math.rad(rng:NextNumber(-15, 5)), 0, math.rad(rng:NextNumber(-10, 10)))
+		flap.CFrame = body * CFrame.new((-0.7 + i * 0.5) * scale, -0.35 * scale, -0.72 * scale) * CFrame.Angles(math.rad(rng:NextNumber(-15, 5)), 0, math.rad(rng:NextNumber(-10, 10)))
 	end
 
 	-- hoofd met pet, ogen en hangende kaak
@@ -92,14 +92,14 @@ function ZombieFactory.create(overrides)
 	for _, dx in ipairs({ -0.28, 0.28 }) do
 		local eye = makePart({Name="Eye", Size=Vector3.new(0.24, 0.18, 0.08) * scale,
 			Color=Color3.fromRGB(255, 45, 45), Material=Enum.Material.Neon}, model)
-		eye.CFrame = head.CFrame * CFrame.new(dx * scale, 0.08 * scale, -0.56 * scale)
+		eye.CFrame = head.CFrame * CFrame.new(dx * scale, 0.08 * scale, -0.61 * scale)
 	end
 	local jaw = makePart({Name="Jaw", Size=Vector3.new(0.72, 0.28, 0.5) * scale, Color=skinDark}, model)
 	jaw.CFrame = head.CFrame * CFrame.new(0, -0.58 * scale, -0.32 * scale) * CFrame.Angles(math.rad(24), 0, 0)
 
 	-- grijp-armen: asymmetrisch vooruit
 	local armAngles = { rng:NextNumber(-95, -75), rng:NextNumber(-115, -95) }
-	for i, dx in ipairs({ -1.45, 1.45 }) do
+	for i, dx in ipairs({ -1.58, 1.58 }) do
 		local arm = makePart({Name="Arm", Size=Vector3.new(0.85, 2, 0.85) * scale, Color=skin}, model)
 		arm.CFrame = body * CFrame.new(dx * scale, 0.55 * scale, -0.3 * scale) * CFrame.Angles(math.rad(armAngles[i]), 0, math.rad(dx > 0 and -4 or 4))
 			* CFrame.new(0, -0.8 * scale, 0)
@@ -121,8 +121,9 @@ function ZombieFactory.create(overrides)
 	-- bloedsporen
 	for i = 1, rng:NextInteger(2, 3) do
 		local blood = makePart({Name="Blood", Size=Vector3.new(rng:NextNumber(0.3, 0.7), rng:NextNumber(0.3, 0.6), 0.03) * scale, Color=BLOOD, Material=Enum.Material.Slate}, model)
-		local host = (i == 1) and vest or ((i == 2) and torso or head)
-		blood.CFrame = host.CFrame * CFrame.new(rng:NextNumber(-0.5, 0.5) * scale, rng:NextNumber(-0.3, 0.3) * scale, -0.64 * scale)
+		local host = (i <= 2) and vest or head
+		local depth = (i <= 2) and -0.70 or -0.60
+		blood.CFrame = host.CFrame * CFrame.new(rng:NextNumber(-0.5, 0.5) * scale, rng:NextNumber(-0.3, 0.3) * scale, depth * scale)
 	end
 
 	-- alles vastlassen aan het karretje

@@ -26,7 +26,7 @@ pcall(function()
 end)
 
 -- oude HUD's opruimen
-for _, name in ipairs({ "HUD", "SpacelandHUD", "SpacelandOverlay" }) do
+for _, name in ipairs({ "HUD", "SpacelandHUD", "SpacelandOverlay", "SpacelandReticle" }) do
 	local legacy = playerGui:FindFirstChild(name)
 	if legacy then legacy:Destroy() end
 end
@@ -93,6 +93,17 @@ local hud = Instance.new("ScreenGui")
 hud.Name = "SpacelandHUD"
 hud.ResetOnSpawn = false
 hud.Parent = playerGui
+
+-- aparte laag voor alles wat exact in het schermmidden moet staan (crosshair,
+-- hitmarker, reload-hint). De gewone HUD-laag begint pas ONDER de Roblox-bovenbalk,
+-- waardoor "0.5" daar nét lager ligt dan het echte schermmidden waar de kogel
+-- doorheen vliegt. IgnoreGuiInset = true rekent met het volledige scherm.
+local reticleGui = Instance.new("ScreenGui")
+reticleGui.Name = "SpacelandReticle"
+reticleGui.ResetOnSpawn = false
+reticleGui.IgnoreGuiInset = true
+reticleGui.DisplayOrder = 5
+reticleGui.Parent = playerGui
 
 -- ---------- RECHTSBOVEN: de filmklapper (mini, rond, clean) ----------
 local clapper = Instance.new("Frame")
@@ -220,11 +231,20 @@ ticketsPlate.BackgroundColor3 = INK
 ticketsPlate.BackgroundTransparency = 0.35
 ticketsPlate.Parent = hud
 addCorner(ticketsPlate, 6)
+-- zelf getekend ticket-icoontje (geen emoji — professioneler en overal scherp)
+local ticketIcon = Instance.new("ImageLabel")
+ticketIcon.Name = "TicketIcon"
+ticketIcon.BackgroundTransparency = 1
+ticketIcon.Position = UDim2.new(0, 3, 0.5, 0)
+ticketIcon.AnchorPoint = Vector2.new(0, 0.5)
+ticketIcon.Size = UDim2.new(0, 24, 0, 24)
+ticketIcon.Image = "rbxassetid://82095401815766"
+ticketIcon.Parent = ticketsPlate
 local ticketsLabel = label(ticketsPlate, {
 	Name = "Tickets",
-	Position = UDim2.new(0, 10, 0, 3),
-	Size = UDim2.new(1, -16, 1, -6),
-	Text = "🎟  0",
+	Position = UDim2.new(0, 32, 0, 3),
+	Size = UDim2.new(1, -38, 1, -6),
+	Text = "0",
 	Font = Enum.Font.GothamBold,
 	TextColor3 = PAPER,
 	TextXAlignment = Enum.TextXAlignment.Left,
@@ -263,7 +283,12 @@ perkLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 perkLayout.Padding = UDim.new(0, 8)
 perkLayout.Parent = perkBar
 
-local PERK_EMOJI = { Juggernog = "✚", SpeedCola = "🥤", StaminUp = "🏃" }
+-- zelf getekende perk-iconen (kruis+hart / colafles / gevleugelde sneaker)
+local PERK_ICONS = {
+	Juggernog = "rbxassetid://121265421190966",
+	SpeedCola = "rbxassetid://133332284525232",
+	StaminUp = "rbxassetid://70428971793765",
+}
 
 -- ---------- RECHTSONDER: de Fate-kaart met stapeltje ----------
 -- twee kaarten "achter" de hoofdkaart voor het stapel-effect
@@ -336,8 +361,20 @@ innerRing.ZIndex = 4
 innerRing.Parent = medallion
 addCorner(innerRing, 28)
 addStroke(innerRing, Color3.fromRGB(120, 52, 16), 1.5, 0.3)
-local cardEmoji = label(medallion, {
-	Name = "CardEmoji",
+-- zelf getekend kaart-icoon (renner/kogel/schild) op het gouden medaillon
+local cardIcon = Instance.new("ImageLabel")
+cardIcon.Name = "CardIcon"
+cardIcon.BackgroundTransparency = 1
+cardIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+cardIcon.Position = UDim2.new(0.5, 0, 0.5, 0)
+cardIcon.Size = UDim2.new(0, 52, 0, 52)
+cardIcon.Image = ""
+cardIcon.Visible = false
+cardIcon.ZIndex = 5
+cardIcon.Parent = medallion
+-- streepje voor de "geen kaart"-stand
+local noCardDash = label(medallion, {
+	Name = "NoCardDash",
 	AnchorPoint = Vector2.new(0.5, 0.5),
 	Position = UDim2.new(0.5, 0, 0.5, 0),
 	Size = UDim2.new(0, 44, 0, 44),
@@ -464,6 +501,20 @@ local reserveLabel = label(ammoPlate, {
 	TextXAlignment = Enum.TextXAlignment.Left,
 })
 
+-- "PRESS R"-hint onder de crosshair (verschijnt bij leeg magazijn)
+local reloadHint = label(reticleGui, {
+	Name = "ReloadHint",
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.new(0.5, 0, 0.5, 52),
+	Size = UDim2.new(0, 300, 0, 26),
+	Text = "PRESS  R  TO  RELOAD",
+	Font = Enum.Font.GothamBold,
+	TextScaled = false,
+	TextSize = 18,
+	TextColor3 = Color3.fromRGB(235, 90, 90),
+	Visible = false,
+})
+
 -- grote wave-aankondiging in het midden
 local announce = label(hud, {
 	Name = "WaveAnnounce",
@@ -479,7 +530,11 @@ local announce = label(hud, {
 -- ===================== DE HUD LATEN LEVEN =====================
 
 -- geld + zwevende popup
-local function formatMoney(amount) return "$" .. tostring(amount) end
+local function formatMoney(amount)
+	local text = tostring(amount)
+	local formatted = text:reverse():gsub("(%d%d%d)", "%1."):reverse():gsub("^%.", "")
+	return "$" .. formatted
+end
 local currentMoney = player:GetAttribute("Money") or 0
 moneyLabel.Text = formatMoney(currentMoney)
 
@@ -510,7 +565,7 @@ end)
 
 -- tickets
 local function updateTickets()
-	ticketsLabel.Text = "🎟  " .. tostring(player:GetAttribute("Tickets") or 0)
+	ticketsLabel.Text = tostring(player:GetAttribute("Tickets") or 0)
 end
 updateTickets()
 player:GetAttributeChangedSignal("Tickets"):Connect(updateTickets)
@@ -542,8 +597,7 @@ local function updatePerkIcons()
 			icon = label(perkBar, {
 				Name = perkName,
 				Size = UDim2.new(0, 36, 0, 36),
-				Text = PERK_EMOJI[perkName] or "?",
-				TextColor3 = PAPER,
+				Text = "",
 				BackgroundColor3 = perkConfig.Color,
 				BackgroundTransparency = 0,
 			})
@@ -551,6 +605,14 @@ local function updatePerkIcons()
 			addGradient(icon, perkConfig.Color, Color3.new(
 				perkConfig.Color.R * 0.55, perkConfig.Color.G * 0.55, perkConfig.Color.B * 0.55))
 			addStroke(icon, INK, 2, 0.3)
+			local perkImage = Instance.new("ImageLabel")
+			perkImage.Name = "Icon"
+			perkImage.BackgroundTransparency = 1
+			perkImage.AnchorPoint = Vector2.new(0.5, 0.5)
+			perkImage.Position = UDim2.new(0.5, 0, 0.5, 0)
+			perkImage.Size = UDim2.new(0, 30, 0, 30)
+			perkImage.Image = PERK_ICONS[perkName] or ""
+			perkImage.Parent = icon
 			perkIcons[perkName] = icon
 		elseif not hasPerk and icon then
 			icon:Destroy()
@@ -569,17 +631,35 @@ local toolConnections = {}
 local function updateAmmo()
 	if not currentTool or currentTool:GetAttribute("Mag") == nil then
 		ammoPlate.Visible = false
+		reloadHint.Visible = false
 		return
 	end
 	ammoPlate.Visible = true
 	weaponLabel.Text = string.upper(currentTool.Name)
 	if currentTool:GetAttribute("Reloading") then
 		magLabel.Text = "···"
+		magLabel.TextColor3 = PAPER
 		reserveLabel.Text = "reload"
+		reloadHint.Visible = false
 	else
-		magLabel.Text = tostring(currentTool:GetAttribute("Mag"))
+		local mag = currentTool:GetAttribute("Mag") or 0
+		magLabel.Text = tostring(mag)
 		local reserve = currentTool:GetAttribute("Reserve")
 		reserveLabel.Text = "/ " .. ((reserve ~= nil and reserve < 0) and "∞" or tostring(reserve or 0))
+
+		-- waarschuwingskleuren: bijna leeg = rood cijfer, helemaal leeg = ook de R-hint
+		local weaponConfig = Config.Weapons[currentTool.Name]
+		local magSize = weaponConfig and weaponConfig.MagSize or 12
+		if mag <= 0 then
+			magLabel.TextColor3 = Color3.fromRGB(235, 80, 80)
+			reloadHint.Visible = true
+		elseif mag <= math.max(2, math.floor(magSize * 0.25)) then
+			magLabel.TextColor3 = Color3.fromRGB(235, 150, 80)
+			reloadHint.Visible = false
+		else
+			magLabel.TextColor3 = PAPER
+			reloadHint.Visible = false
+		end
 	end
 end
 local function setCurrentTool(tool)
@@ -611,12 +691,15 @@ local function updateCard()
 	local cardId = player:GetAttribute("Card")
 	local cardConfig = cardId and Config.Cards[cardId]
 	if cardConfig then
-		cardEmoji.Text = cardConfig.Emoji
+		cardIcon.Image = cardConfig.Icon or ""
+		cardIcon.Visible = true
+		noCardDash.Visible = false
 		cardName.Text = cardConfig.DisplayName
 		cardHint.Visible = player:GetAttribute("CardReady") == true
 		medallion.BackgroundTransparency = 0
 	else
-		cardEmoji.Text = "—"
+		cardIcon.Visible = false
+		noCardDash.Visible = true
 		cardName.Text = "NO CARD"
 		cardHint.Visible = false
 		medallion.BackgroundTransparency = 0.35
@@ -639,19 +722,7 @@ RunService.Heartbeat:Connect(function()
 end)
 
 -- ===================== DOOD, SPECTATOR & GAME OVER =====================
-
--- "YOU DIED": grote rode tekst die kort in beeld klapt
-local youDied = label(hud, {
-	Name = "YouDied",
-	AnchorPoint = Vector2.new(0.5, 0.5),
-	Position = UDim2.new(0.5, 0, 0.38, 0),
-	Size = UDim2.new(0, 600, 0, 110),
-	Text = "YOU DIED",
-	Font = Enum.Font.Bangers,
-	TextColor3 = Color3.fromRGB(200, 40, 40),
-	TextTransparency = 1,
-	ZIndex = 10,
-})
+-- (geen apart "YOU DIED" meer — de GAME OVER-overlay is de enige dood-titel)
 
 -- klein persistent "SPECTATING"-label zolang je een geest bent
 local spectating = label(hud, {
@@ -669,14 +740,6 @@ local spectating = label(hud, {
 local function updateSpectator()
 	local isGhost = player:GetAttribute("Spectator") == true
 	spectating.Visible = isGhost and ReplicatedStorage:GetAttribute("GameOver") == nil
-	if isGhost then
-		-- de dood-klap: fel in beeld, dan langzaam vervagen
-		youDied.TextTransparency = 0
-		local tween = TweenService:Create(youDied, TweenInfo.new(1.6, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-			TextTransparency = 1,
-		})
-		task.delay(1.2, function() tween:Play() end)
-	end
 end
 player:GetAttributeChangedSignal("Spectator"):Connect(updateSpectator)
 
@@ -734,7 +797,8 @@ local function updateGameOver()
 	if wave then
 		overlay.Visible = true
 		overlay.BackgroundTransparency = 1
-		gameOverSub.Text = "SURVIVED UNTIL WAVE " .. wave
+		local kills = player:GetAttribute("Kills") or 0
+		gameOverSub.Text = "SURVIVED UNTIL WAVE " .. wave .. "  \u{2022}  " .. kills .. " KILLS"
 		local survivor = ReplicatedStorage:GetAttribute("LastSurvivor")
 		gameOverSurvivor.Text = survivor and ("LAST SURVIVOR: " .. string.upper(survivor)) or ""
 		spectating.Visible = false
@@ -757,7 +821,7 @@ crosshair.Position = UDim2.new(0.5, 0, 0.5, 0)
 crosshair.Size = UDim2.new(0, 24, 0, 24)
 crosshair.BackgroundTransparency = 1
 crosshair.ZIndex = 9
-crosshair.Parent = hud
+crosshair.Parent = reticleGui
 
 local dot = Instance.new("Frame")
 dot.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -847,4 +911,50 @@ RunService.Heartbeat:Connect(function(deltaTime)
 	end
 	local current = bloodVignette.BackgroundTransparency
 	bloodVignette.BackgroundTransparency = math.min(current + deltaTime * 1.4, floor)
+end)
+
+-- ===================== HITMARKER =====================
+-- vier diagonale streepjes rond de crosshair die opflitsen bij een raak schot
+-- (wit = raak, rood = kill) — het klassieke FPS-bevestigingsgevoel
+local hitmarker = Instance.new("Frame")
+hitmarker.Name = "Hitmarker"
+hitmarker.AnchorPoint = Vector2.new(0.5, 0.5)
+hitmarker.Position = UDim2.new(0.5, 0, 0.5, 0)
+hitmarker.Size = UDim2.new(0, 30, 0, 30)
+hitmarker.BackgroundTransparency = 1
+hitmarker.ZIndex = 9
+hitmarker.Parent = reticleGui
+
+local hitTicks = {}
+for _, corner in ipairs({ {0, 0, 45}, {1, 0, -45}, {0, 1, -45}, {1, 1, 45} }) do
+	local tick = Instance.new("Frame")
+	tick.AnchorPoint = Vector2.new(0.5, 0.5)
+	tick.Position = UDim2.new(corner[1], corner[1] == 0 and 4 or -4, corner[2], corner[2] == 0 and 4 or -4)
+	tick.Size = UDim2.new(0, 2, 0, 9)
+	tick.Rotation = corner[3]
+	tick.BackgroundColor3 = PAPER
+	tick.BackgroundTransparency = 1
+	tick.BorderSizePixel = 0
+	tick.ZIndex = 9
+	tick.Parent = hitmarker
+	table.insert(hitTicks, tick)
+end
+
+local hitConfirm = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("HitConfirm")
+local hitFlashUntil = 0
+hitConfirm.OnClientEvent:Connect(function(killed)
+	local color = killed and Color3.fromRGB(225, 60, 60) or PAPER
+	hitFlashUntil = os.clock() + (killed and 0.28 or 0.16)
+	for _, tick in ipairs(hitTicks) do
+		tick.BackgroundColor3 = color
+		tick.BackgroundTransparency = 0
+	end
+end)
+RunService.Heartbeat:Connect(function()
+	if hitFlashUntil > 0 and os.clock() > hitFlashUntil then
+		hitFlashUntil = 0
+		for _, tick in ipairs(hitTicks) do
+			tick.BackgroundTransparency = 1
+		end
+	end
 end)
