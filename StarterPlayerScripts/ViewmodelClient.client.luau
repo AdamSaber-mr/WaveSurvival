@@ -13,6 +13,16 @@
 --     achter de lens en buiten beeld — zo komen de armen als lange slanke lijnen
 --     het beeld binnen (zoals de referentiefoto) en draaien ze niet raar mee
 --     met de wapen-kanteling
+-- v4-lessen (gemeten in een echte Play-sessie i.p.v. gegokt):
+--   · SCHAAL PER WAPEN. Eén SCALE voor alles kon niet kloppen: de bronmodellen
+--     zijn onderling niet even groot, dus de SMG was een speelgoedje terwijl de
+--     shotgun bij dezelfde schaal het halve scherm vulde. Zie GRIPS[..].scale.
+--   · HAND-OFFSETS IN WAPEN-MAAT. Ze stonden in beeldmaat, dus zodra je SCALE
+--     veranderde lieten de handen los van het wapen. Nu worden ze bij het
+--     bouwen met de schaal van dát wapen vermenigvuldigd.
+--   · De handen zaten sowieso naast de greep, omdat de onzichtbare Handle van
+--     het wapen op een geschatte plek stond (zie tools/build-weapons.luau: die
+--     gebruikt nu de greep-marker uit het bronmodel).
 -- Andere spelers zien gewoon je normale karakter met wapen.
 
 local Players = game:GetService("Players")
@@ -33,56 +43,106 @@ player:SetAttribute("ViewmodelClientHooked", true)
 -- geen muis-pijltje meer: alleen de crosshair
 UserInputService.MouseIconEnabled = false
 
-local camera = workspace.CurrentCamera
+-- BELANGRIJK: nooit één keer opslaan en hergebruiken. Roblox VERVANGT het
+-- Camera-object (bij het starten van een ronde, bij respawnen, bij het wisselen
+-- tussen Play en Edit). Bleven we aan het oude object hangen, dan bevroor het
+-- hele viewmodel op de plek waar je toen keek — het wapen "verdween" dan.
+local function getCamera()
+	return workspace.CurrentCamera
+end
 
--- het wapen was te groot in beeld: alles wordt geschaald
+-- Hoe groot het wapen in beeld is. Dit is de STANDAARD; elk wapen mag in GRIPS
+-- zijn eigen 'scale' zetten. Dat moet ook wel: de bronmodellen zijn onderling
+-- niet even groot, dus één getal voor alles maakte óf de SMG een speelgoedje,
+-- óf de shotgun een balk die het halve scherm vulde.
 local SCALE = 0.4
+-- De handen groeien mee met het wapen, zodat een vuist een vuist om de greep
+-- blijft en niet een handschoentje op een groot wapen. (0.4 = de schaal waarop
+-- de hand-maten ooit met de hand zijn afgesteld.)
+local HAND_REFERENCE = 0.4
 
 -- ===== armen: lang en slank, zoals de referentiefoto =====
-local ARM_THICKNESS = 0.17
-local SLEEVE_THICKNESS = 0.22
+local ARM_THICKNESS = 0.13
+local SLEEVE_THICKNESS = 0.17
 -- schouder-ankers in CAMERA-ruimte (x=rechts, y=omhoog, z=achter de lens).
 -- Ze hangen laag en nét buiten/achter het beeld, zodat alleen de lange
 -- onderarm zichtbaar het beeld in steekt.
-local RIGHT_SHOULDER = Vector3.new(0.7, -0.78, 0.15)
-local LEFT_SHOULDER = Vector3.new(-0.8, -0.82, 0.12)
+-- LES: stond de schouder te ver opzij en te dicht op de lens (x=-0.8, z=0.12),
+-- dan schoot de arm vlak langs de camera en blies het perspectief hem op tot
+-- een reuzenplank dwars door het beeld. Verder naar achteren (grotere z) knipt
+-- de camera het bovenste stuk weg: je ziet alleen nog de onderarm.
+local RIGHT_SHOULDER = Vector3.new(0.45, -0.85, 0.55)
+local LEFT_SHOULDER = Vector3.new(-0.42, -0.90, 0.55)
 
 -- ===== per-wapen griphouding =====
 -- Een pistool houd je anders vast dan een shotgun. Alle hand-offsets zijn
 -- relatief aan de wapen-Handle (die zit ín de greep van het wapen):
---   base      = waar het wapen in beeld hangt (relatief aan de camera)
+--   base      = waar het wapen in beeld hangt (relatief aan de CAMERA)
 --   rightHand = rechtervuist om de greep
 --   leftIdle  = linkerhand in rust (steun-kom / voorgrip / pump)
 --   leftMag   = waar de linkerhand naartoe duikt tijdens het herladen
--- (getallen afgestemd op de wapens v3.1: Handle zit ín de pistoolgreep,
---  de linkerhand-doelen zijn gemeten vanaf de echte handguard/pump-posities)
+--
+-- BELANGRIJK: de drie hand-offsets staan in WAPEN-maat (schaal 1), niet in
+-- beeldmaat. Ze worden bij het bouwen met SCALE vermenigvuldigd. Daardoor
+-- blijven de handen op het wapen plakken als je SCALE verandert — vroeger
+-- stonden hier vaste getallen en liet elke hand los zodra het wapen groeide.
+-- 'base' schaalt NIET mee: dat is camera-ruimte, niet wapen-ruimte.
 local GRIPS = {
 	Pistol = {
 		base = CFrame.new(0.28, -0.5, -1.15) * CFrame.Angles(math.rad(2), math.rad(4), math.rad(2)),
-		rightHand = CFrame.new(0, -0.1, 0.03),
-		leftIdle = CFrame.new(-0.1, -0.2, 0.1) * CFrame.Angles(0, math.rad(15), math.rad(42)),
-		leftMag = CFrame.new(-0.06, -0.5, 0.05) * CFrame.Angles(math.rad(22), math.rad(10), math.rad(-16)),
+		rightHand = CFrame.new(0, -0.25, 0.08),
+		leftIdle = CFrame.new(-0.25, -0.5, 0.25) * CFrame.Angles(0, math.rad(15), math.rad(42)),
+		leftMag = CFrame.new(-0.15, -1.25, 0.13) * CFrame.Angles(math.rad(22), math.rad(10), math.rad(-16)),
 	},
 	SMG = {
-		base = CFrame.new(0.36, -0.52, -1.1) * CFrame.Angles(math.rad(2), math.rad(6), math.rad(2)),
-		rightHand = CFrame.new(0, -0.1, 0.03),
-		leftIdle = CFrame.new(0, 0.06, -0.52) * CFrame.Angles(0, math.rad(6), math.rad(-14)),
-		leftMag = CFrame.new(0, -0.15, -0.3) * CFrame.Angles(math.rad(24), math.rad(10), math.rad(-18)),
+		-- de UMP45 was op 0.4 een speelgoedje dat rechtsboven zweefde
+		scale = 0.62,
+		base = CFrame.new(0.22, -0.30, -1.40) * CFrame.Angles(math.rad(2), math.rad(6), math.rad(2)),
+		-- gemeten: de Handle zit nu ín de greep, met de Trigger op y=0.08 z=-0.23
+		rightHand = CFrame.new(0.01, -0.10, 0.03),
+		leftIdle = CFrame.new(0.01, 0.02, -1.07) * CFrame.Angles(0, math.rad(6), math.rad(-14)),
+		leftMag = CFrame.new(0.01, -0.19, -0.68) * CFrame.Angles(math.rad(24), math.rad(10), math.rad(-18)),
 	},
 	Shotgun = {
-		base = CFrame.new(0.36, -0.5, -1.1) * CFrame.Angles(math.rad(2), math.rad(6), math.rad(2)),
-		rightHand = CFrame.new(0, -0.1, 0.03),
-		leftIdle = CFrame.new(0, -0.03, -0.78) * CFrame.Angles(0, math.rad(5), math.rad(-10)),
-		leftMag = CFrame.new(0, -0.15, -0.38) * CFrame.Angles(math.rad(20), math.rad(8), math.rad(-14)),
+		-- dit model is van zichzelf al fors; groter maken vult het halve scherm
+		scale = 0.42,
+		base = CFrame.new(0.36, -0.48, -1.29) * CFrame.Angles(math.rad(2), math.rad(6), math.rad(2)),
+		rightHand = CFrame.new(0, -0.10, 0.03),
+		-- gemeten in Studio: de Pump zit op z=-1.34, y=0.13
+		leftIdle = CFrame.new(0, 0.13, -1.34) * CFrame.Angles(0, math.rad(5), math.rad(-10)),
+		leftMag = CFrame.new(0, -0.05, -0.75) * CFrame.Angles(math.rad(20), math.rad(8), math.rad(-14)),
 	},
 	RayGun = {
-		base = CFrame.new(0.4, -0.66, -1.65) * CFrame.Angles(math.rad(2), math.rad(4), math.rad(2)),
-		rightHand = CFrame.new(0, -0.12, 0.04),
-		leftIdle = CFrame.new(-0.12, -0.25, 0.12) * CFrame.Angles(0, math.rad(15), math.rad(42)),
-		leftMag = CFrame.new(-0.07, -0.6, 0.06) * CFrame.Angles(math.rad(22), math.rad(10), math.rad(-16)),
+		-- kortste model van de vier (1.95 zichtbaar tegen 2.71 van de SMG), dus
+		-- hij heeft de grootste schaal nodig om even fors in beeld te staan
+		scale = 0.72,
+		-- recht vooruit, zelfde lichte hoek als de andere wapens (Adams voorkeur:
+		-- schuin gedraaid vond hij niet mooi, ook al zie je dan de meter beter)
+		base = CFrame.new(0.449, -1.000, -1.878) * CFrame.Angles(math.rad(2), math.rad(4), math.rad(2)),
+		-- gemeten: de greep loopt van y=-0.23 tot y=+0.30 rond z=+0.22. De
+		-- linkerhand hing daar 0.43 stud naast in de lucht.
+		rightHand = CFrame.new(0.02, -0.12, 0.20),
+		leftIdle = CFrame.new(-0.16, -0.30, 0.26) * CFrame.Angles(0, math.rad(15), math.rad(42)),
+		leftMag = CFrame.new(-0.12, -0.85, 0.22) * CFrame.Angles(math.rad(22), math.rad(10), math.rad(-16)),
 	},
 }
 local DEFAULT_GRIP = GRIPS.Pistol
+
+-- wapen-maat → beeldmaat: alleen de POSITIE schaalt, de draaiing blijft
+local function toViewScale(cf, s)
+	return CFrame.new(cf.Position * s) * (cf - cf.Position)
+end
+local function scaleGrip(grip)
+	local s = grip.scale or SCALE
+	return {
+		scale = s,
+		hand = s / HAND_REFERENCE,
+		base = grip.base, -- camera-ruimte: niet meeschalen
+		rightHand = toViewScale(grip.rightHand, s),
+		leftIdle = toViewScale(grip.leftIdle, s),
+		leftMag = toViewScale(grip.leftMag, s),
+	}
+end
 
 -- ===================== RIG-STATUS =====================
 local rig = nil
@@ -90,7 +150,7 @@ local rigParts = {}         -- wapen-delen: { {part, offset} } relatief aan de h
 local leftParts = {}        -- linkerhand: apart geanimeerd (steun/voorgrip/reload)
 local armParts = nil        -- { rArm, rSleeve, lArm, lSleeve }: elke frame gespannen
 local currentTool = nil
-local currentGrip = DEFAULT_GRIP
+local currentGrip = scaleGrip(DEFAULT_GRIP)
 local toolConnections = {}
 
 local swayCF = CFrame.new()
@@ -98,7 +158,7 @@ local bobClock = 0
 local recoil = 0
 local reloadBlend = 0
 local reloadClock = 0
-local leftHandCF = DEFAULT_GRIP.leftIdle
+local leftHandCF = CFrame.new()
 
 -- ===================== HULZEN =====================
 -- bij elk schot wipt er rechts een leeg hulsje uit dat op de grond stuitert.
@@ -116,11 +176,12 @@ local function ejectCasing()
 	casing.CanQuery = false
 	casing.CanTouch = false
 	-- start naast de loop (rechts van het wapen in beeld)
-	casing.CFrame = camera.CFrame * CFrame.new(0.5, -0.4, -1)
+	local camCF = getCamera().CFrame
+	casing.CFrame = camCF * CFrame.new(0.5, -0.4, -1)
 	-- wipt naar rechtsboven weg, met een flinke tol erin
-	casing.AssemblyLinearVelocity = camera.CFrame.RightVector * casingRng:NextNumber(4, 7)
-		+ camera.CFrame.UpVector * casingRng:NextNumber(3, 5)
-		+ camera.CFrame.LookVector * casingRng:NextNumber(-1, 1)
+	casing.AssemblyLinearVelocity = camCF.RightVector * casingRng:NextNumber(4, 7)
+		+ camCF.UpVector * casingRng:NextNumber(3, 5)
+		+ camCF.LookVector * casingRng:NextNumber(-1, 1)
 	casing.AssemblyAngularVelocity = Vector3.new(
 		casingRng:NextNumber(-25, 25), casingRng:NextNumber(-25, 25), casingRng:NextNumber(-25, 25))
 	casing.Parent = workspace -- door de client gemaakt = alleen jij ziet hem
@@ -183,6 +244,9 @@ local function buildRig(tool)
 	-- lokaal in workspace (client-objecten repliceren niet — alleen jij ziet dit)
 	rig.Parent = workspace
 
+	-- griphouding van dít wapen, al omgerekend naar beeldmaat
+	local grip = scaleGrip(GRIPS[tool.Name] or DEFAULT_GRIP)
+
 	-- ===== wapen als ghost-model klonen en uniform verkleinen =====
 	-- ScaleTo schaalt ALLES netjes mee (ook SpecialMesh/Union-delen van de
 	-- marketplace-wapens); daarna leggen we elk deel vast relatief aan de handle.
@@ -231,9 +295,9 @@ local function buildRig(tool)
 			end
 		end
 	end
-	ghost:ScaleTo(SCALE)
+	ghost:ScaleTo(grip.scale)
 	local ghostHandleCF = ghostHandle.CFrame
-	local startCF = camera.CFrame * (GRIPS[tool.Name] or DEFAULT_GRIP).base
+	local startCF = getCamera().CFrame * grip.base
 	for _, clone in ipairs(ghost:GetChildren()) do
 		if clone:IsA("BasePart") then
 			local offset = ghostHandleCF:ToObjectSpace(clone.CFrame)
@@ -246,23 +310,22 @@ local function buildRig(tool)
 	end
 	ghost:Destroy()
 
-	local grip = GRIPS[tool.Name] or DEFAULT_GRIP
 	local skin, sleeveColor = getBodyColors()
 	local skinDark = Color3.new(skin.R * 0.92, skin.G * 0.92, skin.B * 0.92)
 
 	-- rechterhand: vuist om de greep + vingers eromheen (klein en plat)
-	local rightHand = makeRigPart({ Name = "RightHand", Size = Vector3.new(0.16, 0.16, 0.2), Color = skinDark })
+	local rightHand = makeRigPart({ Name = "RightHand", Size = Vector3.new(0.16, 0.16, 0.2) * grip.hand, Color = skinDark })
 	table.insert(rigParts, { part = rightHand, offset = grip.rightHand })
-	local rightFingers = makeRigPart({ Name = "RightFingers", Size = Vector3.new(0.14, 0.15, 0.06), Color = skin })
-	table.insert(rigParts, { part = rightFingers, offset = grip.rightHand * CFrame.new(0, -0.02, -0.12) })
+	local rightFingers = makeRigPart({ Name = "RightFingers", Size = Vector3.new(0.14, 0.15, 0.06) * grip.hand, Color = skin })
+	table.insert(rigParts, { part = rightFingers, offset = grip.rightHand * CFrame.new(Vector3.new(0, -0.02, -0.12) * grip.hand) })
 
 	-- linkerhand: vuist + vingers + duim, apart geanimeerd (steun/voorgrip/reload)
-	local leftHand = makeRigPart({ Name = "LeftHand", Size = Vector3.new(0.18, 0.18, 0.22), Color = skinDark })
+	local leftHand = makeRigPart({ Name = "LeftHand", Size = Vector3.new(0.18, 0.18, 0.22) * grip.hand, Color = skinDark })
 	table.insert(leftParts, { part = leftHand, offset = CFrame.new() })
-	local leftFingers = makeRigPart({ Name = "LeftFingers", Size = Vector3.new(0.15, 0.17, 0.07), Color = skin })
-	table.insert(leftParts, { part = leftFingers, offset = CFrame.new(0.08, 0.04, -0.12) * CFrame.Angles(0, 0, math.rad(10)) })
-	local leftThumb = makeRigPart({ Name = "LeftThumb", Size = Vector3.new(0.06, 0.11, 0.06), Color = skin })
-	table.insert(leftParts, { part = leftThumb, offset = CFrame.new(-0.07, 0.05, 0.02) * CFrame.Angles(0, 0, math.rad(-14)) })
+	local leftFingers = makeRigPart({ Name = "LeftFingers", Size = Vector3.new(0.15, 0.17, 0.07) * grip.hand, Color = skin })
+	table.insert(leftParts, { part = leftFingers, offset = CFrame.new(Vector3.new(0.08, 0.04, -0.12) * grip.hand) * CFrame.Angles(0, 0, math.rad(10)) })
+	local leftThumb = makeRigPart({ Name = "LeftThumb", Size = Vector3.new(0.06, 0.11, 0.06) * grip.hand, Color = skin })
+	table.insert(leftParts, { part = leftThumb, offset = CFrame.new(Vector3.new(-0.07, 0.05, 0.02) * grip.hand) * CFrame.Angles(0, 0, math.rad(-14)) })
 
 	-- armen + mouwen: elke frame opnieuw gespannen tussen schouder (camera-
 	-- ruimte) en hand — lengte maakt niet uit, we maken ze ruim lang genoeg
@@ -301,7 +364,7 @@ end
 
 -- arm + mouw spannen tussen schouder (camera-ruimte) en pols (wereld-positie)
 local function stretchArm(arm, sleeve, shoulderCam, wristWorld, sleeveFraction)
-	local camCF = camera.CFrame
+	local camCF = getCamera().CFrame
 	local wristCam = camCF:ToObjectSpace(CFrame.new(wristWorld)).Position
 	local delta = wristCam - shoulderCam
 	local length = delta.Magnitude
@@ -333,7 +396,6 @@ end
 if player.Character then watchCharacter(player.Character) end
 player.CharacterAdded:Connect(function(character)
 	clearRig()
-	camera = workspace.CurrentCamera
 	watchCharacter(character)
 end)
 
@@ -414,7 +476,7 @@ RunService:BindToRenderStep("SpacelandViewmodel", Enum.RenderPriority.Camera.Val
 
 	-- alles plaatsen
 	local baseOffset = currentGrip.base
-	local handleCF = camera.CFrame * baseOffset * swayCF * bobCF * recoilCF * reloadCF
+	local handleCF = getCamera().CFrame * baseOffset * swayCF * bobCF * recoilCF * reloadCF
 	for _, entry in ipairs(rigParts) do
 		entry.part.CFrame = handleCF * entry.offset
 	end
@@ -424,9 +486,9 @@ RunService:BindToRenderStep("SpacelandViewmodel", Enum.RenderPriority.Camera.Val
 
 	-- armen: elke frame gespannen tussen de camera-schouders en de handen
 	if armParts then
-		local rightWristWorld = (handleCF * currentGrip.rightHand * CFrame.new(0.03, -0.06, 0.13)).Position
+		local rightWristWorld = (handleCF * currentGrip.rightHand * CFrame.new(Vector3.new(0.03, -0.06, 0.13) * currentGrip.hand)).Position
 		stretchArm(armParts.rArm, armParts.rSleeve, RIGHT_SHOULDER, rightWristWorld, 0.78)
-		local leftWristWorld = (handleCF * leftHandCF * CFrame.new(-0.02, -0.05, 0.11)).Position
+		local leftWristWorld = (handleCF * leftHandCF * CFrame.new(Vector3.new(-0.02, -0.05, 0.11) * currentGrip.hand)).Position
 		stretchArm(armParts.lArm, armParts.lSleeve, LEFT_SHOULDER, leftWristWorld, 0.75)
 	end
 end)
